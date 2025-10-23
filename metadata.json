@@ -1,0 +1,9 @@
+{
+  "name": "NexusAi",
+  "description": "An all-in-one AI powerhouse, offering a suite of intelligent tools including an advanced AI chat, a creative image generator, a concise content summarizer, and a smart code generator.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera",
+    "display-capture"
+  ]
+}

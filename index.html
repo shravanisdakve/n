@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexusAI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom scrollbar for a better look in dark mode */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e293b; /* slate-800 */
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #475569; /* slate-600 */
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b; /* slate-500 */
+    }
+    /* Simple animation for loading dots */
+    @keyframes blink {
+        0% { opacity: .2; }
+        20% { opacity: 1; }
+        100% { opacity: .2; }
+    }
+    .loading-dot span {
+        animation-name: blink;
+        animation-duration: 1.4s;
+        animation-iteration-count: infinite;
+        animation-fill-mode: both;
+    }
+    .loading-dot span:nth-child(2) {
+        animation-delay: .2s;
+    }
+    .loading-dot span:nth-child(3) {
+        animation-delay: .4s;
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.1.1",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.1.1/client",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.544.0",
+    "firebase/app": "https://aistudiocdn.com/firebase/app@^10.12.3",
+    "firebase/auth": "https://aistudiocdn.com/firebase/auth@^10.12.3",
+    "firebase/": "https://aistudiocdn.com/firebase@^10.12.3/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-slate-900 text-slate-200 font-sans antialiased">
+  <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
