@@ -1,4 +1,22 @@
 import { type Note, type Flashcard } from '../types';
+import { extractTextFromFile } from './geminiService';
+
+// Helper function to convert File to Base64
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            if (!result || !result.includes(',')) {
+                return reject(new Error("Invalid file data for base64 conversion"));
+            }
+            const base64 = result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+    });
+};
 
 // Mock database with localStorage persistence
 const getMockNotes = (courseId: string): Note[] => {
@@ -61,19 +79,44 @@ export const addTextNote = async (courseId: string, title: string, content: stri
 export const uploadNoteFile = async (courseId: string, title: string, file: File): Promise<Note | null> => {
     console.log("Uploading note file to mock service:", title);
     const mockNotes = getMockNotes(courseId);
+    let extractedContent = "[Text extraction pending or failed]"; // Default content
+
+    try {
+        // 1. Convert file to base64
+        const base64Data = await fileToBase64(file);
+        // 2. Extract text using Gemini
+        extractedContent = await extractTextFromFile(base64Data, file.type);
+        console.log(`Extracted ${extractedContent.length} characters from ${file.name}`);
+    } catch (error) {
+        console.error(`Failed to extract text from ${file.name}:`, error);
+        // Keep the default content message if extraction fails
+    }
+
     const newNote: Note = {
-        id: `mock_note_${Date.now()}`,
+        id: `mock_note_${Date.now()}_${Math.random()}`,
         courseId,
         title,
+        content: extractedContent, // Store extracted text here
         fileName: file.name,
         fileType: file.type,
-        fileUrl: URL.createObjectURL(file),
+        fileUrl: URL.createObjectURL(file), // Still store URL for preview/download
         createdAt: Date.now(),
     };
     const updatedNotes = [...mockNotes, newNote];
     setMockNotes(courseId, updatedNotes);
-    console.log("Uploaded note file to mock service:", newNote);
+    console.log("Uploaded note file to mock service (with extracted text):", newNote);
     return Promise.resolve(newNote);
+};
+
+export const updateNoteContent = async (courseId: string, noteId: string, newContent: string): Promise<void> => {
+    console.log("Updating note content in mock service:", noteId);
+    const mockNotes = getMockNotes(courseId);
+    const updatedNotes = mockNotes.map(n =>
+        n.id === noteId ? { ...n, content: newContent } : n
+    );
+    setMockNotes(courseId, updatedNotes);
+    console.log("Updated note content in mock service:", noteId);
+    return Promise.resolve();
 };
 
 export const deleteNote = async (courseId: string, note: Note): Promise<void> => {
