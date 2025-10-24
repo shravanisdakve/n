@@ -105,17 +105,26 @@ const StudyRoom: React.FC = () => {
 
     // --- Chat Handlers ---
     const handleSendChatMessage = async (messageText: string) => {
-        if (!messageText.trim() || !roomId || !currentUser) return;
+    if (!messageText.trim() || !roomId || !currentUser) {
+        console.log("handleSendChatMessage: Aborting - missing data", { messageText, roomId, currentUser }); // Add detailed log
+        return;
+    }
 
-        const newMessage: ChatMessage = {
-            role: 'user',
-            parts: [{ text: messageText }],
-            user: { email: currentUser.email, displayName: currentUser.displayName },
-            timestamp: Date.now() // Add timestamp for mock
-        };
-        await saveRoomMessages(roomId, [newMessage]); // Use saveRoomMessages for mock
-        setChatInput('');
+    const newMessage: ChatMessage = {
+        role: 'user',
+        parts: [{ text: messageText }],
+        user: { email: currentUser.email, displayName: currentUser.displayName },
+        timestamp: Date.now()
     };
+    console.log("handleSendChatMessage: Sending message:", newMessage); // Add log
+    try {
+        await saveRoomMessages(roomId, [newMessage]);
+        setChatInput(''); // Clear input AFTER successful save
+         console.log("handleSendChatMessage: Message saved, input cleared."); // Add log
+    } catch (error) {
+         console.error("handleSendChatMessage: Error saving message:", error); // Log errors
+    }
+};
 
     // --- FIX: Moved postSystemMessage definition BEFORE the useEffect that uses it ---
      const postSystemMessage = useCallback(async (text: string) => {
@@ -714,9 +723,14 @@ const ChatPanel: React.FC<any> = ({ messages, input, setInput, onSend, currentUs
                     </div>
                 )}
                 <Button onClick={() => setShowEmojis(p => !p)} className="px-3 bg-slate-700 hover:bg-slate-600"><Smile size={16}/></Button>
-                <Input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSend()} placeholder="Type a message..." className="flex-1"/>
-                <Button onClick={() => onSend()} disabled={!input.trim()} className="px-3"><Send size={16}/></Button>
-            </div>
+                                <Input
+                                    value={input}
+                                    onChange={e => setInput(e.target.value)}
+                                    onKeyPress={e => e.key === 'Enter' && !e.shiftKey && onSend(input)} // Added !e.shiftKey to prevent sending on Shift+Enter
+                                    placeholder="Type a message..."
+                                    className="flex-1"
+                                />
+                                <Button onClick={() => onSend(input)} disabled={!input.trim()} className="px-3"><Send size={16}/></Button>            </div>
         </div>
     );
 }

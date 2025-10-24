@@ -124,8 +124,10 @@ export const saveRoomMessages = async (roomId: string, messages: ChatMessage[]) 
     if (!mockChatMessages[roomId]) {
         mockChatMessages[roomId] = [];
     }
-    mockChatMessages[roomId].push(...messages);
-    console.log(`Mock messages saved to ${roomId}`);
+    // Add timestamp if missing (shouldn't be needed with recent changes but good safety check)
+    const messagesWithTimestamp = messages.map(msg => ({ ...msg, timestamp: msg.timestamp || Date.now() }));
+    mockChatMessages[roomId].push(...messagesWithTimestamp);
+    console.log(`Mock saveRoomMessages: Messages added to room ${roomId}. Current count: ${mockChatMessages[roomId].length}`); // Add log
 };
 
 export const sendChatMessage = async (roomId: string, message: ChatMessage) => {
@@ -184,13 +186,17 @@ export const onRoomUpdate = (roomId: string, callback: (room: StudyRoom | null) 
 
 export const onMessagesUpdate = (roomId: string, callback: (messages: ChatMessage[]) => void) => {
     // if (!db) return () => {}; // Firebase disabled, use mock
-    
+
     // Simulate initial load
-    callback(mockChatMessages[roomId] || []);
+    const initialMessages = mockChatMessages[roomId] || [];
+    console.log(`Mock onMessagesUpdate (${roomId}): Initial load with ${initialMessages.length} messages.`);
+    callback(initialMessages);
 
     // Simulate real-time updates by polling
     const interval = setInterval(() => {
-        callback(mockChatMessages[roomId] || []);
+        const currentMessages = mockChatMessages[roomId] || [];
+         // console.log(`Mock onMessagesUpdate (${roomId}): Polling, found ${currentMessages.length} messages.`); // Optional: Can be noisy
+        callback(currentMessages);
     }, 2000); // Check for new messages every 2 seconds
 
     console.log(`Mock onMessagesUpdate attached for ${roomId}`);
