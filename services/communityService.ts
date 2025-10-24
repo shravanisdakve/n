@@ -20,66 +20,53 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject, getMetadata } from 'firebase/storage';
 
+// --- MOCK DATABASE ---
+const mockRooms: StudyRoom[] = [];
+
 const mockChatMessages: Record<string, ChatMessage[]> = {
     'mock_course_1': [
-        { senderId: 'user1', senderName: 'Alice', text: 'Welcome to the Introduction to AI community!', timestamp: Timestamp.fromDate(new Date(Date.now() - 3600000)) },
-        { senderId: 'user2', senderName: 'Bob', text: 'Hey everyone, looking forward to discussing the latest AI trends.', timestamp: Timestamp.fromDate(new Date(Date.now() - 1800000)) },
-        { senderId: 'user1', senderName: 'Alice', text: 'Does anyone have good resources for neural networks?', timestamp: Timestamp.fromDate(new Date(Date.now() - 600000)) },
+        { role: 'user', parts: [{ text: 'Welcome to the Introduction to AI community!' }], user: { displayName: 'Alice', email: 'user1' }, timestamp: Date.now() - 3600000 },
+        { role: 'user', parts: [{ text: 'Hey everyone, looking forward to discussing the latest AI trends.' }], user: { displayName: 'Bob', email: 'user2' }, timestamp: Date.now() - 1800000 },
+        { role: 'user', parts: [{ text: 'Does anyone have good resources for neural networks?' }], user: { displayName: 'Alice', email: 'user1' }, timestamp: Date.now() - 600000 },
     ],
     'mock_course_2': [
-        { senderId: 'user3', senderName: 'Charlie', text: "Hi, I'm struggling with linked lists. Any tips?", timestamp: Timestamp.fromDate(new Date(Date.now() - 7200000)) },
-        { senderId: 'user4', senderName: 'Diana', text: 'Try visualizing the pointers! It helps a lot.', timestamp: Timestamp.fromDate(new Date(Date.now() - 3600000)) },
+        { role: 'user', parts: [{ text: "Hi, I'm struggling with linked lists. Any tips?" }], user: { displayName: 'Charlie', email: 'user3' }, timestamp: Date.now() - 7200000 },
+        { role: 'user', parts: [{ text: 'Try visualizing the pointers! It helps a lot.' }], user: { displayName: 'Diana', email: 'user4' }, timestamp: Date.now() - 3600000 },
     ],
 };
+// --- END MOCK DATABASE ---
 
 // --- Room Management ---
 
 export const getRooms = async (): Promise<StudyRoom[]> => {
-    if (!db) return [];
-    try {
-        const roomsCollection = collection(db, 'rooms');
-        const snapshot = await getDocs(roomsCollection);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudyRoom));
-    } catch (error) {
-        console.error("Error getting rooms: ", error);
-        return [];
-    }
+    // if (!db) return []; // Firebase disabled, use mock
+    console.log("Mock getRooms returning:", mockRooms);
+    return Promise.resolve(mockRooms);
 };
 
 export const getRoom = async (id: string): Promise<StudyRoom | null> => {
-    if (!db) return null;
-    try {
-        const roomDoc = doc(db, 'rooms', id);
-        const snapshot = await getDoc(roomDoc);
-        if (snapshot.exists()) {
-            return { id: snapshot.id, ...snapshot.data() } as StudyRoom;
-        }
-        return null;
-    } catch (error) {
-        console.error("Error getting room: ", error);
-        return null;
-    }
+    // if (!db) return null; // Firebase disabled, use mock
+    const room = mockRooms.find(r => r.id === id) || null;
+    console.log("Mock getRoom returning:", room);
+    return Promise.resolve(room);
 };
 
 export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: string, university: string | undefined, selectedTechnique: string, topic: string): Promise<StudyRoom | null> => {
-    // Mock implementation since Firebase is disabled.
-    // This simulates creating a room and returns a mock room object.
     console.log("Mocking room creation for:", name);
     
-    // The user who is creating the room
     const creator = {
         email: auth.currentUser?.email || 'test@example.com',
         displayName: auth.currentUser?.displayName || 'Test User'
     };
 
     const mockRoom: StudyRoom = {
-        id: `mock_${Date.now()}`, // Generate a unique mock ID
+        id: `mock_${Date.now()}`,
         name,
         courseId,
         maxUsers,
         createdBy,
         university,
-        users: [creator], // Add the creator to the room
+        users: [creator], 
         pomodoro: {
             state: 'stopped',
             mode: 'focus',
@@ -89,42 +76,49 @@ export const addRoom = async (name: string, courseId: string, maxUsers: number, 
         topic: topic,
     };
     
-    // We use Promise.resolve to simulate an async operation
+    mockRooms.push(mockRoom); // Add the new room to the mock array
+    console.log("Mock room added. Current rooms:", mockRooms);
     return Promise.resolve(mockRoom);
 };
 
 export const joinRoom = async (id: string, user: { email: string | null; displayName: string | null; }) => {
-    if (!user.email || !db) return;
-    try {
-        const roomDoc = doc(db, 'rooms', id);
-        await updateDoc(roomDoc, {
-            users: arrayUnion({ email: user.email, displayName: user.displayName || 'Student' })
-        });
-    } catch (error) {
-        console.error("Error joining room: ", error);
+    // if (!user.email || !db) return; // Firebase disabled, use mock
+    if (!user.email) return;
+    
+    const room = mockRooms.find(r => r.id === id);
+    if (room && !room.users.some(u => u.email === user.email)) {
+        room.users.push({ email: user.email, displayName: user.displayName || 'Student' });
+        console.log(`Mock user ${user.email} joined room ${id}. Users:`, room.users);
     }
 };
 
 export const leaveRoom = async (id: string, user: { email: string | null; displayName: string | null; }) => {
-    if (!user.email || !db) return;
-    try {
-        const roomDoc = doc(db, 'rooms', id);
-        await updateDoc(roomDoc, {
-            users: arrayRemove({ email: user.email, displayName: user.displayName || 'Student' })
-        });
-        // Optional: Add a Cloud Function to delete empty rooms.
-    } catch (error) {
-        console.error("Error leaving room: ", error);
+    // if (!user.email || !db) return; // Firebase disabled, use mock
+    if (!user.email) return;
+
+    const room = mockRooms.find(r => r.id === id);
+    if (room) {
+        room.users = room.users.filter(u => u.email !== user.email);
+        console.log(`Mock user ${user.email} left room ${id}. Users:`, room.users);
+        
+        // --- FIX: Comment out this block to prevent Strict Mode from deleting the room ---
+        // if (room.users.length === 0) {
+        //     const index = mockRooms.findIndex(r => r.id === id);
+        //     if (index > -1) {
+        //         mockRooms.splice(index, 1);
+        //         console.log(`Mock room ${id} was empty and has been deleted.`);
+        //     }
+        // }
+        // --- END FIX ---
     }
 };
 
 export const updateRoomPomodoroState = async (roomId: string, pomodoroState: PomodoroState) => {
-    if (!db) return;
-    try {
-        const roomDoc = doc(db, 'rooms', roomId);
-        await updateDoc(roomDoc, { pomodoro: pomodoroState });
-    } catch (error) {
-        console.error("Error updating pomodoro state: ", error);
+    // if (!db) return; // Firebase disabled, use mock
+    const room = mockRooms.find(r => r.id === roomId);
+    if (room) {
+        room.pomodoro = pomodoroState;
+        console.log(`Mock room ${roomId} pomodoro state updated.`);
     }
 };
 
@@ -132,27 +126,35 @@ export const updateRoomPomodoroState = async (roomId: string, pomodoroState: Pom
 
 export const getRoomMessages = async (roomId: string): Promise<ChatMessage[]> => {
     // if (!db) return []; // Firebase disabled, use mock
+    // This function is problematic for community chat. Let's fix CourseCommunity.tsx's call.
+    // For StudyRoom (which uses onMessagesUpdate), this isn't the primary method.
     return Promise.resolve(mockChatMessages[roomId] || []);
 };
 
 export const saveRoomMessages = async (roomId: string, messages: ChatMessage[]) => {
-    // This function is deprecated in favor of sendChatMessage for mock
-    console.warn("saveRoomMessages is deprecated for mock. Use sendChatMessage.");
-};
-
-export const sendChatMessage = async (roomId: string, message: Omit<ChatMessage, 'timestamp'>) => {
     // if (!db) return; // Firebase disabled, use mock
     if (!mockChatMessages[roomId]) {
         mockChatMessages[roomId] = [];
     }
-    const fullMessage: ChatMessage = { ...message, timestamp: Timestamp.fromDate(new Date()) };
+    mockChatMessages[roomId].push(...messages);
+    console.log(`Mock messages saved to ${roomId}`);
+};
+
+export const sendChatMessage = async (roomId: string, message: ChatMessage) => {
+    // if (!db) return; // Firebase disabled, use mock
+    if (!mockChatMessages[roomId]) {
+        mockChatMessages[roomId] = [];
+    }
+    const fullMessage: ChatMessage = { ...message, timestamp: Date.now() };
     mockChatMessages[roomId].push(fullMessage);
-    // Simulate real-time update for any active listeners
-    // In a real app, this would trigger onSnapshot listeners
     console.log(`Mock message sent to ${roomId}:`, fullMessage);
 };
 
 // --- Shared AI Notes Management (using a subcollection with a single document) ---
+
+// Mock notes per room
+const mockAiNotes: Record<string, string> = {};
+const mockUserNotes: Record<string, string> = {};
 
 const getNotesDoc = (roomId: string) => {
     if (!db) throw new Error("Firestore not initialized");
@@ -160,55 +162,74 @@ const getNotesDoc = (roomId: string) => {
 }
 
 export const getRoomAINotes = async (roomId: string): Promise<string> => {
-    if (!db) return '';
-    try {
-        const notesDoc = await getDoc(getNotesDoc(roomId));
-        return notesDoc.exists() ? notesDoc.data().content : '';
-    } catch (error) {
-        console.error("Error getting AI notes: ", error);
-        return '';
-    }
+    // if (!db) return ''; // Firebase disabled, use mock
+    return Promise.resolve(mockAiNotes[roomId] || '');
 };
 
 export const saveRoomAINotes = async (roomId: string, notes: string) => {
-    if (!db) return;
-    try {
-        await setDoc(getNotesDoc(roomId), { content: notes, lastUpdated: serverTimestamp() });
-    } catch (error) {
-        console.error("Error saving AI notes: ", error);
-    }
+    // if (!db) return; // Firebase disabled, use mock
+    mockAiNotes[roomId] = notes;
+    console.log(`Mock AI notes saved for room ${roomId}`);
+    return Promise.resolve();
 };
 
 // --- Real-time listeners ---
 
 export const onRoomUpdate = (roomId: string, callback: (room: StudyRoom | null) => void) => {
-    if (!db) return () => {};
-    const roomDoc = doc(db, 'rooms', roomId);
-    return onSnapshot(roomDoc, (snapshot) => {
-        if (snapshot.exists()) {
-            callback({ id: snapshot.id, ...snapshot.data() } as StudyRoom);
-        } else {
-            callback(null);
-        }
-    });
+    // if (!db) return () => {}; // Firebase disabled, use mock
+    
+    // Simulate initial load
+    const room = mockRooms.find(r => r.id === roomId) || null;
+    callback(room);
+    
+    // In a real mock, you might set up an interval to check for changes,
+    // but for just loading the room, this is sufficient.
+    // The real onSnapshot listener is removed.
+    
+    console.log(`Mock onRoomUpdate attached for ${roomId}. Found:`, !!room);
+    
+    return () => {
+        // Return an empty unsubscribe function
+        console.log(`Mock onRoomUpdate detached for ${roomId}`);
+    };
 };
 
 export const onMessagesUpdate = (roomId: string, callback: (messages: ChatMessage[]) => void) => {
     // if (!db) return () => {}; // Firebase disabled, use mock
+    
     // Simulate initial load
     callback(mockChatMessages[roomId] || []);
 
-    // For mock, we don't have a real-time listener. The component will poll getRoomMessages.
-    return () => {}; // Return an empty unsubscribe function
+    // Simulate real-time updates by polling
+    const interval = setInterval(() => {
+        callback(mockChatMessages[roomId] || []);
+    }, 2000); // Check for new messages every 2 seconds
+
+    console.log(`Mock onMessagesUpdate attached for ${roomId}`);
+
+    return () => {
+        clearInterval(interval); // Return a function to clear the interval
+        console.log(`Mock onMessagesUpdate detached for ${roomId}`);
+    };
 };
 
 export const onNotesUpdate = (roomId: string, callback: (notes: string) => void) => {
-    if (!db) return () => {};
-    return onSnapshot(getNotesDoc(roomId), (snapshot) => {
-        if (snapshot.exists()) {
-            callback(snapshot.data().content || '');
-        }
-    });
+    // if (!db) return () => {}; // Firebase disabled, use mock
+    
+    // Simulate initial load
+    callback(mockAiNotes[roomId] || '');
+
+    // Simulate real-time updates
+    const interval = setInterval(() => {
+         callback(mockAiNotes[roomId] || '');
+    }, 2000);
+    
+    console.log(`Mock onNotesUpdate attached for ${roomId}`);
+
+    return () => {
+        clearInterval(interval);
+        console.log(`Mock onNotesUpdate detached for ${roomId}`);
+    };
 };
 
 // --- User Notes Management ---
@@ -219,24 +240,34 @@ const getUserNotesDoc = (roomId: string) => {
 }
 
 export const saveUserNotes = async (roomId: string, notes: string) => {
-    if (!db) return;
-    try {
-        await setDoc(getUserNotesDoc(roomId), { content: notes, lastUpdated: serverTimestamp() });
-    } catch (error) {
-        console.error("Error saving user notes: ", error);
-    }
+    // if (!db) return; // Firebase disabled, use mock
+    mockUserNotes[roomId] = notes;
+    console.log(`Mock user notes saved for room ${roomId}`);
+    return Promise.resolve();
 };
 
 export const onUserNotesUpdate = (roomId: string, callback: (notes: string) => void) => {
-    if (!db) return () => {};
-    return onSnapshot(getUserNotesDoc(roomId), (snapshot) => {
-        if (snapshot.exists()) {
-            callback(snapshot.data().content || '');
-        }
-    });
+    // if (!db) return () => {}; // Firebase disabled, use mock
+
+    // Simulate initial load
+    callback(mockUserNotes[roomId] || '');
+
+    // Simulate real-time updates
+    const interval = setInterval(() => {
+         callback(mockUserNotes[roomId] || '');
+    }, 2000);
+    
+    console.log(`Mock onUserNotesUpdate attached for ${roomId}`);
+    
+    return () => {
+        clearInterval(interval);
+        console.log(`Mock onUserNotesUpdate detached for ${roomId}`);
+    };
 };
 
 // --- Resource Management ---
+// Mock resources
+const mockResources: Record<string, any[]> = {};
 
 const getResourcesRef = (roomId: string) => {
     if (!storage) throw new Error("Firebase Storage not initialized");
@@ -244,49 +275,59 @@ const getResourcesRef = (roomId: string) => {
 }
 
 export const uploadResource = async (roomId: string, file: File, user: { displayName: string | null }) => {
-    if (!storage) return;
-    const resourceRef = ref(getResourcesRef(roomId), file.name);
-    await uploadBytes(resourceRef, file, { customMetadata: { uploader: user.displayName || 'Unknown' } });
+    // if (!storage) return; // Firebase disabled, use mock
+    
+    if (!mockResources[roomId]) {
+        mockResources[roomId] = [];
+    }
+    
+    const newResource = {
+        name: file.name,
+        url: URL.createObjectURL(file), // Create a blob URL for local access
+        uploader: user.displayName || 'Unknown',
+        timeCreated: new Date().toISOString(),
+    };
+    
+    mockResources[roomId].push(newResource);
+    console.log(`Mock resource uploaded to room ${roomId}:`, newResource);
+    return Promise.resolve();
 };
 
 export const getRoomResources = async (roomId: string) => {
-    if (!storage) return [];
-    try {
-        const resourcesRef = getResourcesRef(roomId);
-        const res = await listAll(resourcesRef);
-        const resources = await Promise.all(res.items.map(async (itemRef) => {
-            const url = await getDownloadURL(itemRef);
-            const metadata = await getMetadata(itemRef);
-            return { name: itemRef.name, url, uploader: metadata.customMetadata?.uploader, timeCreated: metadata.timeCreated };
-        }));
-        return resources;
-    } catch (error) {
-        console.error("Error getting resources: ", error);
-        return [];
-    }
+    // if (!storage) return []; // Firebase disabled, use mock
+    return Promise.resolve(mockResources[roomId] || []);
 };
 
 export const deleteResource = async (roomId: string, fileName: string) => {
-    if (!storage) return;
-    const resourceRef = ref(getResourcesRef(roomId), fileName);
-    await deleteObject(resourceRef);
+    // if (!storage) return; // Firebase disabled, use mock
+    if (mockResources[roomId]) {
+        mockResources[roomId] = mockResources[roomId].filter(r => r.name !== fileName);
+        console.log(`Mock resource deleted from room ${roomId}:`, fileName);
+    }
+    return Promise.resolve();
 };
 
 export const onResourcesUpdate = (roomId: string, callback: (resources: any[]) => void) => {
     // This is a workaround for the lack of a native `onSnapshot` for Storage.
     // In a real app, you'd use Firestore to store metadata and listen to that.
-    const interval = setInterval(async () => {
-        const resources = await getRoomResources(roomId);
-        callback(resources);
-    }, 5000); // Poll every 5 seconds
-
+    
     // Initial call
-    getRoomResources(roomId).then(callback);
+    callback(mockResources[roomId] || []);
+    
+    const interval = setInterval(async () => {
+        callback(mockResources[roomId] || []);
+    }, 2000); // Poll every 2 seconds
 
-    return () => clearInterval(interval);
+    console.log(`Mock onResourcesUpdate attached for ${roomId}`);
+
+    return () => {
+        clearInterval(interval);
+        console.log(`Mock onResourcesUpdate detached for ${roomId}`);
+    };
 };
 
 // --- Shared Quiz Management ---
+const mockQuizzes: Record<string, Quiz | null> = {};
 
 const getQuizDoc = (roomId: string) => {
     if (!db) throw new Error("Firestore not initialized");
@@ -294,35 +335,49 @@ const getQuizDoc = (roomId: string) => {
 }
 
 export const onQuizUpdate = (roomId: string, callback: (quiz: Quiz | null) => void) => {
-    if (!db) return () => {};
-    return onSnapshot(getQuizDoc(roomId), (snapshot) => {
-        if (snapshot.exists()) {
-            callback(snapshot.data() as Quiz);
-        } else {
-            callback(null);
-        }
-    });
+    // if (!db) return () => {}; // Firebase disabled, use mock
+    
+    // Initial call
+    callback(mockQuizzes[roomId] || null);
+    
+    const interval = setInterval(() => {
+        callback(mockQuizzes[roomId] || null);
+    }, 1000); // Poll every second
+    
+    console.log(`Mock onQuizUpdate attached for ${roomId}`);
+    
+    return () => {
+        clearInterval(interval);
+        console.log(`Mock onQuizUpdate detached for ${roomId}`);
+    };
 };
 
 export const saveQuiz = async (roomId: string, quizData: Omit<Quiz, 'id' | 'answers'>) => {
-    if (!db) return;
+    // if (!db) return; // Firebase disabled, use mock
     const quiz: Quiz = {
         ...quizData,
         id: `quiz_${Date.now()}`,
         answers: [],
     };
-    await setDoc(getQuizDoc(roomId), quiz);
+    mockQuizzes[roomId] = quiz;
+    console.log(`Mock quiz saved for room ${roomId}:`, quiz);
+    return Promise.resolve();
 };
 
 export const saveQuizAnswer = async (roomId: string, userId: string, displayName: string, answerIndex: number) => {
-    if (!db) return;
-    const answer = { userId, displayName, answerIndex, timestamp: serverTimestamp() };
-    await updateDoc(getQuizDoc(roomId), {
-        answers: arrayUnion(answer)
-    });
+    // if (!db) return; // Firebase disabled, use mock
+    const quiz = mockQuizzes[roomId];
+    if (quiz && !quiz.answers.some(a => a.userId === userId)) {
+        const answer = { userId, displayName, answerIndex, timestamp: Date.now() };
+        quiz.answers.push(answer);
+        console.log(`Mock quiz answer saved for room ${roomId}:`, answer);
+    }
+    return Promise.resolve();
 };
 
 export const clearQuiz = async (roomId: string) => {
-    if (!db) return;
-    await deleteDoc(getQuizDoc(roomId));
+    // if (!db) return; // Firebase disabled, use mock
+    mockQuizzes[roomId] = null;
+    console.log(`Mock quiz cleared for room ${roomId}`);
+    return Promise.resolve();
 };

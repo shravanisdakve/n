@@ -100,6 +100,34 @@ const StudyRoom: React.FC = () => {
     const prevParticipantsRef = useRef<StudyRoomType['users']>([]);
     const welcomeMessageSent = useRef(false);
 
+    // --- Chat Handlers ---
+    const handleSendChatMessage = async (messageText: string) => {
+        if (!messageText.trim() || !roomId || !currentUser) return;
+
+        const newMessage: ChatMessage = {
+            role: 'user',
+            parts: [{ text: messageText }],
+            user: { email: currentUser.email, displayName: currentUser.displayName },
+            timestamp: Date.now() // Add timestamp for mock
+        };
+        await saveRoomMessages(roomId, [newMessage]); // Use saveRoomMessages for mock
+        setChatInput('');
+    };
+
+    // --- FIX: Moved postSystemMessage definition BEFORE the useEffect that uses it ---
+     const postSystemMessage = useCallback(async (text: string) => {
+        if (!roomId) return;
+        const systemMessage: ChatMessage = {
+            role: 'model',
+            parts: [{ text }],
+            user: { displayName: 'Focus Bot', email: 'system@nexus.ai' },
+            timestamp: Date.now() // Add timestamp for mock
+        };
+        await saveRoomMessages(roomId, [systemMessage]); // Use saveRoomMessages for mock
+    }, [roomId]);
+    // --- END FIX ---
+
+
     useEffect(() => {
         if (room) {
             const prevEmails = prevParticipantsRef.current.map(p => p.email);
@@ -115,7 +143,7 @@ const StudyRoom: React.FC = () => {
 
             prevParticipantsRef.current = room.users;
         }
-    }, [room, currentUser]);
+    }, [room, currentUser, postSystemMessage]); // Added postSystemMessage to dependency array
 
     // --- Effects for Setup and Teardown ---
     const getMedia = useCallback(async () => {
@@ -170,9 +198,11 @@ const StudyRoom: React.FC = () => {
 
         const unsubRoom = onRoomUpdate(roomId, (updatedRoom) => {
             if (!updatedRoom) {
+                console.log("Room not found or deleted, navigating away."); // Add log
                 navigate('/study-lobby');
                 return;
             }
+             console.log("Room updated:", updatedRoom); // Add log
             setRoom(updatedRoom);
             setParticipants(updatedRoom.users);
         });
@@ -183,9 +213,14 @@ const StudyRoom: React.FC = () => {
         const unsubResources = onResourcesUpdate(roomId, setResources);
         const unsubQuiz = onQuizUpdate(roomId, (quiz) => {
             setSharedQuiz(quiz);
-            if (quiz && quiz.answers.length === participants.length) {
-                setShowLeaderboard(true);
-            }
+            // Check participants state directly here, not the potentially stale closure value
+            setParticipants(currentParticipants => {
+                 if (quiz && quiz.answers.length > 0 && quiz.answers.length === currentParticipants.length) {
+                    setShowLeaderboard(true);
+                }
+                return currentParticipants; // Return the current state
+            });
+
         });
 
         return () => {
@@ -202,18 +237,19 @@ const StudyRoom: React.FC = () => {
                 endSession(sessionId);
             }
         };
-    }, [roomId, currentUser, navigate]);
+    }, [roomId, currentUser, navigate]); // Removed participants from dependency array here
     
     useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
     useEffect(() => { aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages, quiz]);
 
     useEffect(() => {
+        // Now this effect can safely call postSystemMessage
         if (room && room.technique && room.topic && !welcomeMessageSent.current) {
             const welcomeMessage = `Welcome! This room is set up for a "Targeted Learning" session using the ${room.technique} technique on the topic: "${room.topic}". Let's get started!`
             postSystemMessage(welcomeMessage);
             welcomeMessageSent.current = true;
         }
-    }, [room, postSystemMessage]);
+    }, [room, postSystemMessage]); // Added postSystemMessage here too
 
     // --- Pomodoro Timer Effect ---
     useEffect(() => {
@@ -339,28 +375,7 @@ const StudyRoom: React.FC = () => {
         await deleteResource(roomId, fileName);
     };
 
-    // --- Chat Handlers ---
-    const handleSendChatMessage = async (messageText: string) => {
-        if (!messageText.trim() || !roomId || !currentUser) return;
-        
-        const newMessage: ChatMessage = {
-            role: 'user',
-            parts: [{ text: messageText }],
-            user: { email: currentUser.email, displayName: currentUser.displayName },
-        };
-        await saveRoomMessages(roomId, [newMessage]);
-        setChatInput('');
-    };
 
-     const postSystemMessage = useCallback(async (text: string) => {
-        if (!roomId) return;
-        const systemMessage: ChatMessage = {
-            role: 'model',
-            parts: [{ text }],
-            user: { displayName: 'Focus Bot', email: 'system@nexus.ai' },
-        };
-        await saveRoomMessages(roomId, [systemMessage]);
-    }, [roomId]);
 
     // --- Pomodoro Handlers ---
     const handleStartTimer = async () => {
