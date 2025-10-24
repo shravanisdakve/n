@@ -1,44 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext'; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/contexts/AuthContext.tsx]
-import { getCourses, addCourse } from '../services/courseService'; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/courseService.ts]
-import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent, deleteFlashcard } from '../services/notesService'; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/notesService.ts]
-import { type Note, type Course, type Flashcard as FlashcardType } from '../types'; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-import { PageHeader, Button, Input, Textarea, Select, Modal } from '../components/ui'; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx]
+import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext'; //
+import { getCourses, addCourse } from '../services/courseService'; //
+import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent } from '../services/notesService'; //
+import { type Note, type Course, type Flashcard as FlashcardType } from '../types'; //
+import { PageHeader, Button, Input, Textarea, Select, Modal, Spinner } from '../components/ui'; //
 import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff } from 'lucide-react';
-import { generateFlashcards } from '../services/geminiService'; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/geminiService.ts]
+import { generateFlashcards, extractTextFromFile } from '../services/geminiService'; //
 import { useNavigate } from 'react-router-dom';
-import Flashcard from '../components/Flashcard'; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/Flashcard.tsx]
+import Flashcard from '../components/Flashcard'; //
+
+// Helper function
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            if (!result || !result.includes(',')) {
+                return reject(new Error("Invalid file data for base64 conversion"));
+            }
+            const base64 = result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+    });
+};
+
 
 const Notes: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth(); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/contexts/AuthContext.tsx]
+  const { currentUser } = useAuth(); //
 
   // --- State Management ---
-  const [courses, setCourses] = useState<Course[]>([]); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+  const [courses, setCourses] = useState<Course[]>([]); //
   const [selectedCourse, setSelectedCourse] = useState<string>('');
-  const [notes, setNotes] = useState<Note[]>([]); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-  const [activeNote, setActiveNote] = useState<Note | null>(null); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+  const [notes, setNotes] = useState<Note[]>([]); //
+  const [activeNote, setActiveNote] = useState<Note | null>(null); //
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [editedContent, setEditedContent] = useState('');
 
-  const [flashcards, setFlashcards] = useState<FlashcardType[]>([]); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+  const [flashcards, setFlashcards] = useState<FlashcardType[]>([]); //
 
   const [activeTab, setActiveTab] = useState<'notes' | 'flashcards'>('notes');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false); // Loading state for note-based generation
+  const [isFileGenerating, setIsFileGenerating] = useState(false); // Loading state for file-based generation
+  const [isSingleGenerating, setIsSingleGenerating] = useState<string | null>(null); // Track which note ID is generating
 
   // --- Data Fetching Effects ---
   useEffect(() => {
-    if (currentUser) { // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/contexts/AuthContext.tsx]
-      getCourses().then(setCourses); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/courseService.ts]
+    if (currentUser) { //
+      getCourses().then(setCourses); //
     }
-  }, [currentUser]); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/contexts/AuthContext.tsx]
+  }, [currentUser]); //
 
   useEffect(() => {
     if (selectedCourse) {
       setActiveNote(null);
       setIsEditingNote(false);
-      getNotes(selectedCourse).then(setNotes); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/notesService.ts]
-      getFlashcards(selectedCourse).then(setFlashcards); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/notesService.ts]
+      getNotes(selectedCourse).then(setNotes); //
+      getFlashcards(selectedCourse).then(setFlashcards); //
     } else {
         setNotes([]);
         setFlashcards([]);
@@ -50,35 +71,40 @@ const Notes: React.FC = () => {
   const handleAddCourse = async () => {
     const courseName = prompt("Enter the name of the new course:");
     if (courseName) {
-      const newCourse = await addCourse(courseName); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/courseService.ts]
+      const newCourse = await addCourse(courseName); //
       if (newCourse) {
         setCourses(prev => [...prev, newCourse]);
-        setSelectedCourse(newCourse.id); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+        setSelectedCourse(newCourse.id); //
       }
     }
   };
 
   const reloadNotes = () => {
     if (selectedCourse) {
-      getNotes(selectedCourse).then(setNotes); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/notesService.ts]
+      getNotes(selectedCourse).then(setNotes); //
     }
   };
+   const reloadFlashcards = () => {
+      if (selectedCourse) {
+          getFlashcards(selectedCourse).then(setFlashcards); //
+      }
+   };
 
-  const handleSelectNote = (note: Note) => { // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+  const handleSelectNote = (note: Note) => { //
     setActiveNote(note);
-    setEditedContent(note.content || ''); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+    setEditedContent(note.content || ''); //
     setIsEditingNote(false);
   };
 
-  const handleDeleteNote = async (e: React.MouseEvent, noteId: string) => { // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-    e.stopPropagation();
+  const handleDeleteNote = async (e: React.MouseEvent, noteId: string) => { //
+    e.stopPropagation(); // Prevent note selection
     if (!selectedCourse || !window.confirm("Are you sure you want to delete this note?")) return;
 
-    const noteToDelete = notes.find(n => n.id === noteId); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+    const noteToDelete = notes.find(n => n.id === noteId); //
     if (noteToDelete) {
-      await deleteNote(selectedCourse, noteToDelete); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/notesService.ts]
+      await deleteNote(selectedCourse, noteToDelete); //
       reloadNotes();
-      if (activeNote?.id === noteId) { // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+      if (activeNote?.id === noteId) { //
         setActiveNote(null);
       }
     }
@@ -88,10 +114,8 @@ const Notes: React.FC = () => {
     if (!activeNote || !selectedCourse) return;
 
     try {
-        await updateNoteContent(selectedCourse, activeNote.id, editedContent); // Call the service
+        await updateNoteContent(selectedCourse, activeNote.id, editedContent); //
         console.log("Saved note:", activeNote.id, "with content:", editedContent); //
-
-        // Update local state after successful save
         setActiveNote(prev => prev ? { ...prev, content: editedContent } : null); //
         setNotes(prev => prev.map(n => n.id === activeNote.id ? { ...n, content: editedContent } : n)); //
         setIsEditingNote(false);
@@ -101,45 +125,104 @@ const Notes: React.FC = () => {
     }
   };
 
-  // --- UPDATED handleGenerateFlashcards ---
-  const handleGenerateFlashcards = async () => {
-    if (!selectedCourse || notes.length === 0) return;
+  const handleGenerateFromNotes = async () => {
+    if (!selectedCourse || notes.length === 0 || isGenerating || isFileGenerating || isSingleGenerating) return;
 
-    // Filter notes to include only those with actual content (not null, empty, or the placeholder message)
+    setIsGenerating(true);
     const validNotesContent = notes
-        .filter(n => n.content && n.content !== "[Text extraction pending or failed]") // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-        .map(n => n.content); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+        .filter(n => n.content && n.content !== "[Text extraction pending or failed]") //
+        .map(n => n.content);
 
     if (validNotesContent.length === 0) {
-      alert("No text content found in your notes (including uploaded files) to generate flashcards from. Please add text notes or upload files with extractable text.");
+      alert("No text content found in your notes to generate flashcards from.");
+      setIsGenerating(false);
       return;
     }
-
     const content = validNotesContent.join('\n\n');
 
     try {
-        console.log("Generating flashcards from content length:", content.length);
-        const flashcardsJson = await generateFlashcards(content); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/geminiService.ts]
-        const newFlashcards = JSON.parse(flashcardsJson).map((f: any) => ({ ...f, id: `mock_flashcard_${Date.now()}_${Math.random()}`, bucket: 1, lastReview: Date.now() })); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-        await addFlashcards(selectedCourse, newFlashcards); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/notesService.ts]
-        getFlashcards(selectedCourse).then(setFlashcards); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/notesService.ts]
-        alert(`Successfully generated ${newFlashcards.length} flashcards!`);
+        console.log("Generating flashcards from combined notes content length:", content.length);
+        const flashcardsJson = await generateFlashcards(content); //
+        const newFlashcards = JSON.parse(flashcardsJson).map((f: any) => ({ ...f, id: `mock_flashcard_${Date.now()}_${Math.random()}`, bucket: 1, lastReview: Date.now() })); //
+        await addFlashcards(selectedCourse, newFlashcards); //
+        reloadFlashcards();
+        alert(`Successfully generated ${newFlashcards.length} flashcards from notes!`);
     } catch (error) {
-        console.error("Failed to generate or parse flashcards:", error);
-        alert("Failed to generate flashcards. The AI might have had trouble understanding the combined content, or there was a network issue. Please try again.");
+        console.error("Failed to generate or parse flashcards from notes:", error);
+        alert("Failed to generate flashcards from notes. Please try again.");
+    } finally {
+        setIsGenerating(false);
     }
   };
-  // --- END UPDATE ---
+
+  const handleGenerateFromFile = async (file: File | null) => {
+    if (!file || !selectedCourse || isGenerating || isFileGenerating || isSingleGenerating) return;
+
+    setIsFileGenerating(true);
+    let extractedContent = '';
+    try {
+        const base64Data = await fileToBase64(file);
+        extractedContent = await extractTextFromFile(base64Data, file.type); //
+        console.log(`Extracted ${extractedContent.length} characters from ${file.name}`);
+
+        if (!extractedContent || extractedContent.trim().length === 0) {
+            alert(`Could not extract any text from ${file.name}. Flashcard generation cancelled.`);
+            setIsFileGenerating(false);
+            return;
+        }
+
+        console.log(`Generating flashcards from extracted text (length: ${extractedContent.length})`);
+        const flashcardsJson = await generateFlashcards(extractedContent); //
+        const newFlashcards = JSON.parse(flashcardsJson).map((f: any) => ({ ...f, id: `mock_flashcard_${Date.now()}_${Math.random()}`, bucket: 1, lastReview: Date.now() })); //
+
+        await addFlashcards(selectedCourse, newFlashcards); //
+        reloadFlashcards();
+        alert(`Successfully generated ${newFlashcards.length} flashcards from the file ${file.name}!`);
+
+    } catch (error) {
+        console.error(`Failed process file ${file.name} for flashcards:`, error);
+        alert(`Failed to generate flashcards from the file ${file.name}. Please try again.`);
+    } finally {
+        setIsFileGenerating(false);
+    }
+  };
+
+  // --- NEW: Handler for generating flashcards from a single note ---
+  const handleGenerateSingleNoteFlashcards = async (e: React.MouseEvent, note: Note) => { //
+    e.stopPropagation(); // Prevent note selection
+    if (!note.content || note.content === "[Text extraction pending or failed]" || !selectedCourse || isGenerating || isFileGenerating || isSingleGenerating) { //
+        alert("This note doesn't have any text content to generate flashcards from.");
+        return;
+    }
+
+    setIsSingleGenerating(note.id); //
+    try {
+        console.log(`Generating flashcards from single note '${note.title}' (length: ${note.content.length})`); //
+        const flashcardsJson = await generateFlashcards(note.content); //
+        const newFlashcards = JSON.parse(flashcardsJson).map((f: any) => ({ ...f, id: `mock_flashcard_${Date.now()}_${Math.random()}`, bucket: 1, lastReview: Date.now() })); //
+
+        await addFlashcards(selectedCourse, newFlashcards); //
+        reloadFlashcards();
+        alert(`Successfully generated ${newFlashcards.length} flashcards from the note '${note.title}'!`); //
+        setActiveTab('flashcards'); // Switch to flashcards tab after generation
+
+    } catch (error) {
+        console.error(`Failed to generate flashcards from note ${note.id}:`, error); //
+        alert(`Failed to generate flashcards from the note '${note.title}'. Please try again.`); //
+    } finally {
+        setIsSingleGenerating(null);
+    }
+  };
 
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      <PageHeader title="Notes & Resources" subtitle="Manage your notes, files, and flashcards for each course." /> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
+      <PageHeader title="Notes & Resources" subtitle="Manage your notes, files, and flashcards for each course." /> {/* */}
 
       {/* --- Course Selector --- */}
       <div className="flex items-center gap-2">
           <BookOpen className="w-6 h-6 mr-2 text-violet-400" />
-          <Select // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx]
+          <Select //
             value={selectedCourse}
             onChange={e => setSelectedCourse(e.target.value)}
             className="w-full md:w-1/3"
@@ -149,7 +232,7 @@ const Notes: React.FC = () => {
               <option key={course.id} value={course.id}>{course.name}</option>
             )}
           </Select>
-          <Button onClick={handleAddCourse} className="p-2.5"><PlusCircle size={16} /></Button> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
+          <Button onClick={handleAddCourse} className="p-2.5"><PlusCircle size={16} /></Button> {/* */}
       </div>
 
       {selectedCourse ? (
@@ -177,24 +260,29 @@ const Notes: React.FC = () => {
               activeNote={activeNote}
               isEditingNote={isEditingNote}
               editedContent={editedContent}
+              isSingleGenerating={isSingleGenerating} // Pass loading state down
               onSelectNote={handleSelectNote}
               onDeleteNote={handleDeleteNote}
               onSaveEdit={handleSaveNoteEdit}
               onEditClick={() => setIsEditingNote(true)}
               onContentChange={setEditedContent}
               onAddNoteClick={() => setIsModalOpen(true)}
+              onGenerateSingleNoteFlashcards={handleGenerateSingleNoteFlashcards} // Pass handler down
             />
           )}
 
           {activeTab === 'flashcards' && (
             <FlashcardsView
               flashcards={flashcards}
-              onGenerate={handleGenerateFlashcards}
+              onGenerateFromNotes={handleGenerateFromNotes}
+              onGenerateFromFile={handleGenerateFromFile}
+              isGenerating={isGenerating}
+              isFileGenerating={isFileGenerating}
               courseId={selectedCourse}
               onUpdateCard={async (card, correct) => {
                 const newBucket = correct ? Math.min(card.bucket + 1, 4) : 1;
                 await updateFlashcard(selectedCourse, card.id, { bucket: newBucket, lastReview: Date.now() });
-                getFlashcards(selectedCourse).then(setFlashcards);
+                reloadFlashcards();
               }}
             />
           )}
@@ -218,26 +306,25 @@ const Notes: React.FC = () => {
 
 // --- TabButton Component ---
 const TabButton: React.FC<{icon: React.ElementType, label: string, isActive: boolean, onClick: () => void}> = ({ icon: Icon, label, isActive, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center justify-center gap-2 px-4 py-3 font-semibold transition-colors ${isActive 
-      ? 'text-violet-400 border-b-2 border-violet-400' 
-      : 'text-slate-400 hover:text-white'
-    }`}
-  >
-    <Icon size={18} /> {label}
-  </button>
-);
+    <button
+      onClick={onClick}
+      className={`flex items-center justify-center gap-2 px-4 py-3 font-semibold transition-colors ${isActive 
+        ? 'text-violet-400 border-b-2 border-violet-400'
+        : 'text-slate-400 hover:text-white'
+      }`}
+    >
+      <Icon size={18} /> {label}
+    </button>
+  );
 
-// --- NotesView Sub-Component ---
+// --- NotesView Sub-Component (UPDATED) ---
 const NotesView: React.FC<any> = ({
-  notes, activeNote, isEditingNote, editedContent, 
-  onSelectNote, onDeleteNote, onSaveEdit, onEditClick, onContentChange, onAddNoteClick
+  notes, activeNote, isEditingNote, editedContent, isSingleGenerating, // Added isSingleGenerating
+  onSelectNote, onDeleteNote, onSaveEdit, onEditClick, onContentChange, onAddNoteClick, onGenerateSingleNoteFlashcards // Added onGenerateSingleNoteFlashcards
 }) => {
   const navigate = useNavigate();
-  const [showPdfPreview, setShowPdfPreview] = useState(false); // State for PDF preview toggle
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
 
-  // Reset PDF preview when active note changes
   useEffect(() => {
     setShowPdfPreview(false);
   }, [activeNote]);
@@ -252,28 +339,57 @@ const NotesView: React.FC<any> = ({
           </Button>
         </div>
         <div className="space-y-1 p-2">
-          {notes.map((note: Note) => ( //
-            <button
-              key={note.id} //
-              onClick={() => onSelectNote(note)}
-              className={`w-full text-left p-3 rounded-lg group flex justify-between items-start ${activeNote?.id === note.id ? 'bg-violet-900/50' : 'hover:bg-slate-700/50' //
-              }`}
-            >
-              <div className="flex items-center gap-2 overflow-hidden">
-                <FileText size={16} className={`flex-shrink-0 ${note.fileUrl ? "text-sky-400" : "text-slate-400"}`} /> {/* */}
-                <span className="font-medium text-slate-200 truncate">{note.title}</span> {/* */}
-              </div>
-              <button onClick={(e) => onDeleteNote(e, note.id)} className="flex-shrink-0 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-2"> {/* */}
-                <Trash2 size={16} />
+          {notes.map((note: Note) => { //
+            const isGeneratingThis = isSingleGenerating === note.id; // Check if this specific note is generating //
+            const hasContent = note.content && note.content !== "[Text extraction pending or failed]"; // Check for valid content //
+
+            return (
+              <button
+                key={note.id} //
+                onClick={() => onSelectNote(note)}
+                className={`w-full text-left p-3 rounded-lg group flex justify-between items-start ${activeNote?.id === note.id ? 'bg-violet-900/50' : 'hover:bg-slate-700/50' //
+                }`}
+              >
+                {/* Note Title and Icon */}
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <FileText size={16} className={`flex-shrink-0 ${note.fileUrl ? "text-sky-400" : "text-slate-400"}`} /> {/* */}
+                  <span className="font-medium text-slate-200 truncate">{note.title}</span> {/* */}
+                </div>
+                {/* Action Buttons (Generate Flashcard, Delete) */}
+                <div className="flex-shrink-0 flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                   {hasContent && ( // Only show generate button if there's content
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-1 h-auto hover:bg-violet-500/30"
+                        title="Generate Flashcards from this note"
+                        onClick={(e) => onGenerateSingleNoteFlashcards(e, note)}
+                        disabled={isGeneratingThis || isSingleGenerating} // Disable if this or any other is generating
+                      >
+                         {isGeneratingThis ? <Spinner size="sm"/> : <Layers size={14} className="text-violet-400"/>}
+                      </Button>
+                   )}
+                   <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-1 h-auto hover:bg-red-500/30"
+                      title="Delete Note"
+                      onClick={(e) => onDeleteNote(e, note.id)} //
+                      disabled={isGeneratingThis || isSingleGenerating} // Disable while generating
+                    >
+                      <Trash2 size={14} className="text-red-400"/>
+                   </Button>
+                </div>
               </button>
-            </button>
-          ))}
+            )
+          })}
           {notes.length === 0 && <p className="text-center text-slate-400 p-4 text-sm">No notes yet.</p>}
         </div>
       </div>
 
       {/* Right Column: Content Viewer */}
-      <div className="w-2/3 overflow-y-auto p-6">
+      {/* ... (rest of NotesView remains the same) ... */}
+       <div className="w-2/3 overflow-y-auto p-6">
         {activeNote ? (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -374,147 +490,181 @@ const NotesView: React.FC<any> = ({
   );
 };
 
+
 // --- AddNoteModal Sub-Component ---
 const AddNoteModal: React.FC<{isOpen: boolean, onClose: () => void, courseId: string, onNoteAdded: () => void}> = ({
-  isOpen, onClose, courseId, onNoteAdded
-}) => {
-  const [noteType, setNoteType] = useState<'text' | 'file'>('text');
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    isOpen, onClose, courseId, onNoteAdded
+  }) => {
+    const [noteType, setNoteType] = useState<'text' | 'file'>('text');
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [file, setFile] = useState<File | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!courseId) return;
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!courseId) return;
 
-    setIsSubmitting(true);
-    try {
-        if (noteType === 'file' && file) {
-            await uploadNoteFile(courseId, title || file.name, file); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/notesService.ts]
-        } else if (noteType === 'text') {
-            await addTextNote(courseId, title, content); // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/services/notesService.ts]
-        }
-        onNoteAdded();
-    } catch (error) {
-        console.error("Failed to add note:", error);
-        alert("Failed to add the note. Please try again.");
-    } finally {
-        setIsSubmitting(false);
-        // Reset local state *before* closing to avoid flicker
+      setIsSubmitting(true);
+      try {
+          if (noteType === 'file' && file) {
+              await uploadNoteFile(courseId, title || file.name, file); //
+          } else if (noteType === 'text') {
+              await addTextNote(courseId, title, content); //
+          }
+          onNoteAdded(); // Refresh the notes list
+      } catch (error) {
+          console.error("Failed to add note:", error);
+          alert("Failed to add the note. Please try again.");
+      } finally {
+          setIsSubmitting(false);
+          // Reset local state *before* closing to avoid flicker
+          setTitle('');
+          setContent('');
+          setFile(null);
+          setNoteType('text');
+          onClose();
+      }
+    };
+
+    // Reset internal state when the modal is closed externally
+    useEffect(() => {
+      if (!isOpen) {
         setTitle('');
         setContent('');
         setFile(null);
         setNoteType('text');
-        onClose();
-    }
+        setIsSubmitting(false);
+      }
+    }, [isOpen]);
+
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="Add New Note or Resource"> {/* */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex justify-center bg-slate-700 rounded-lg p-1">
+            <Button type="button" onClick={() => setNoteType('text')} className={`w-1/2 ${noteType === 'text' ? 'bg-violet-600' : 'bg-transparent'}`}> {/* */}
+              Text Note
+            </Button>
+            <Button type="button" onClick={() => setNoteType('file')} className={`w-1/2 ${noteType === 'file' ? 'bg-violet-600' : 'bg-transparent'}`}> {/* */}
+              Upload File
+            </Button>
+          </div>
+
+          <Input //
+            placeholder="Title (required)"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            required
+          />
+
+          {noteType === 'text' && (
+            <Textarea //
+              placeholder="Write your note or doubt here..."
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              rows={6}
+            />
+          )}
+
+          {noteType === 'file' && (
+            <div className="flex items-center justify-center w-full">
+              <label htmlFor="modal-file-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-700/50 hover:bg-slate-700">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload size={24} className="text-slate-400 mb-2" />
+                  <p className="mb-2 text-sm text-slate-400 text-center px-2">
+                    {file ? file.name : <><span className="font-semibold">Click to upload</span> or drag and drop</>}</p>
+                  <p className="text-xs text-slate-500">PDF, TXT, MD, PPTX</p>
+                </div>
+                <input
+                  id="modal-file-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
+                  accept=".txt,.md,.pdf,.pptx"
+                />
+              </label>
+            </div>
+          )}
+
+          <Button type="submit" isLoading={isSubmitting} className="w-full" disabled={isSubmitting || (noteType === 'file' && !file) || !title.trim()}> {/* */}
+            {isSubmitting ? 'Adding...' : 'Add Resource'}
+          </Button>
+        </form>
+      </Modal>
+    );
   };
 
-  // Reset internal state when the modal is closed externally
-  useEffect(() => {
-    if (!isOpen) {
-      setTitle('');
-      setContent('');
-      setFile(null);
-      setNoteType('text');
-      setIsSubmitting(false);
-    }
-  }, [isOpen]);
-
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add New Note or Resource"> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex justify-center bg-slate-700 rounded-lg p-1">
-          <Button type="button" onClick={() => setNoteType('text')} className={`w-1/2 ${noteType === 'text' ? 'bg-violet-600' : 'bg-transparent'}`}> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
-            Text Note
-          </Button>
-          <Button type="button" onClick={() => setNoteType('file')} className={`w-1/2 ${noteType === 'file' ? 'bg-violet-600' : 'bg-transparent'}`}> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
-            Upload File
-          </Button>
-        </div>
-
-        <Input // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
-          placeholder="Title (required)"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          required
-        />
-
-        {noteType === 'text' && (
-          <Textarea // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
-            placeholder="Write your note or doubt here..."
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            rows={6}
-          />
-        )}
-
-        {noteType === 'file' && (
-          <div className="flex items-center justify-center w-full">
-            <label htmlFor="modal-file-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-700/50 hover:bg-slate-700">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Upload size={24} className="text-slate-400 mb-2" />
-                <p className="mb-2 text-sm text-slate-400 text-center px-2">
-                  {file ? file.name : <><span className="font-semibold">Click to upload</span> or drag and drop</>}
-                </p>
-                <p className="text-xs text-slate-500">PDF, TXT, MD, PPTX</p>
-              </div>
-              <input
-                id="modal-file-upload"
-                type="file"
-                className="hidden"
-                onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
-                accept=".txt,.md,.pdf,.pptx"
-              />
-            </label>
-          </div>
-        )}
-
-        <Button type="submit" isLoading={isSubmitting} className="w-full" disabled={isSubmitting || (noteType === 'file' && !file) || !title.trim()}> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
-          {isSubmitting ? 'Adding...' : 'Add Resource'}
-        </Button>
-      </form>
-    </Modal>
-  );
-};
-
 // --- FlashcardsView Sub-Component ---
-const FlashcardsView: React.FC<{flashcards: FlashcardType[], onGenerate: () => void, courseId: string, onUpdateCard: (card: FlashcardType, correct: boolean) => void}> = ({
-  flashcards, onGenerate, courseId, onUpdateCard
+const FlashcardsView: React.FC<{ 
+    flashcards: FlashcardType[],
+    onGenerateFromNotes: () => void,
+    onGenerateFromFile: (file: File | null) => void,
+    isGenerating: boolean,
+    isFileGenerating: boolean,
+    courseId: string,
+    onUpdateCard: (card: FlashcardType, correct: boolean) => void
+}> = ({
+  flashcards, onGenerateFromNotes, onGenerateFromFile, isGenerating, isFileGenerating, courseId, onUpdateCard
 }) => {
   const [reviewFlashcards, setReviewFlashcards] = useState<FlashcardType[]>([]);
   const [isReviewing, setIsReviewing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null); // Ref for hidden file input
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onGenerateFromFile(file);
+    }
+    // Reset file input to allow uploading the same file again
+    if (event.target) {
+        event.target.value = '';
+    }
+  };
 
   const startReview = () => {
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     const reviewable = flashcards.filter(f => {
-        if (!f.lastReview || !f.bucket) return true; // Review if data is missing or invalid // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-        const daysSinceReview = (now - f.lastReview) / oneDay; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-        if (f.bucket === 1) return daysSinceReview >= 1; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-        if (f.bucket === 2) return daysSinceReview >= 3; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-        if (f.bucket === 3) return daysSinceReview >= 7; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-        if (f.bucket === 4) return daysSinceReview >= 14; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-        return daysSinceReview >= 30; // Default for bucket 5+ (adjust as needed)
+        if (!f.lastReview || !f.bucket) return true; //
+        const daysSinceReview = (now - f.lastReview) / oneDay; //
+        if (f.bucket === 1) return daysSinceReview >= 1; //
+        if (f.bucket === 2) return daysSinceReview >= 3; //
+        if (f.bucket === 3) return daysSinceReview >= 7; //
+        if (f.bucket === 4) return daysSinceReview >= 14; //
+        return daysSinceReview >= 30;
     });
     setReviewFlashcards(reviewable);
     setIsReviewing(true);
   };
 
 
-  const handleDeleteFlashcard = async (cardId: string) => {
-    if (!courseId || !window.confirm("Delete this flashcard?")) return;
-    await deleteFlashcard(courseId, cardId);
-    getFlashcards(courseId).then(setFlashcards); // Refresh list
-  };
-
-
   return (
     <div className="p-6 overflow-y-auto">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+        accept=".txt,.md,.pdf,.pptx"
+      />
+
       <div className="flex gap-4 mb-6">
-        <Button onClick={onGenerate}>Generate Flashcards from Notes</Button> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
-        <Button onClick={startReview} variant="outline" disabled={flashcards.length === 0}> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
+        {/* Button to generate from existing notes */}
+        <Button onClick={onGenerateFromNotes} disabled={isGenerating || isFileGenerating} isLoading={isGenerating}> {/* */}
+          Generate from All Notes
+        </Button>
+        {/* Button to trigger file upload and generation */}
+        <Button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isGenerating || isFileGenerating}
+            isLoading={isFileGenerating}
+            variant="secondary" // Use a different style maybe
+        > {/* */}
+          <Upload size={16} className="mr-2" /> Generate from File
+        </Button>
+        {/* Review button */}
+        <Button onClick={startReview} variant="outline" disabled={flashcards.length === 0 || isGenerating || isFileGenerating}> {/* */}
           Review Due Cards
         </Button>
       </div>
@@ -522,21 +672,12 @@ const FlashcardsView: React.FC<{flashcards: FlashcardType[], onGenerate: () => v
       <h3 className="text-lg font-bold text-slate-200 mb-4">All Flashcards ({flashcards.length})</h3>
       {flashcards.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {flashcards.map((card) => ( // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
-            <div key={card.id} className="relative group"> {/* Add a wrapper */}
-              <Flashcard front={card.front} back={card.back} /> {/* */}
-              {/* Add buttons (visible on hover) */}
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                {/* Add Edit button later if needed */}
-                <Button variant="ghost" size="sm" onClick={() => handleDeleteFlashcard(card.id)} className="p-1 h-auto bg-slate-800/50 hover:bg-red-500/50"> {/* */}
-                  <Trash2 size={14} className="text-red-400"/>
-                </Button>
-              </div>
-            </div>
+          {flashcards.map((card) => ( //
+            <Flashcard key={card.id} front={card.front} back={card.back} /> //
           ))}
         </div>
       ) : (
-        <p className="text-slate-400">No flashcards generated yet. Use your notes to create some!</p>
+        <p className="text-slate-400">No flashcards generated yet. Use the buttons above to create some!</p>
       )}
 
       {isReviewing && (
@@ -551,7 +692,7 @@ const FlashcardsView: React.FC<{flashcards: FlashcardType[], onGenerate: () => v
 };
 
 // --- FlashcardPlayer Sub-Component ---
-const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () => void, onUpdateCard: (card: FlashcardType, correct: boolean) => void }> = ({ flashcards, onComplete, onUpdateCard }) => { // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () => void, onUpdateCard: (card: FlashcardType, correct: boolean) => void }> = ({ flashcards, onComplete, onUpdateCard }) => { //
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
 
@@ -572,13 +713,13 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
                 <div className="bg-slate-800 p-8 rounded-lg text-center" onClick={e => e.stopPropagation()}>
                     <p className="text-xl text-white">No flashcards are due for review today!</p>
                     <p className="text-slate-400 mb-6">Check back later or review all cards from the main page.</p>
-                    <Button onClick={onComplete} className="mt-4">Close</Button> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
+                    <Button onClick={onComplete} className="mt-4">Close</Button> {/* */}
                 </div>
             </div>
         )
     }
 
-    const card = flashcards[currentIndex]; // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts]
+    const card = flashcards[currentIndex]; //
 
     return (
         <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 animate-in fade-in-50">
@@ -594,11 +735,11 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
                 >
                     {/* Front */}
                     <div className="absolute w-full h-full bg-slate-700 rounded-lg flex items-center justify-center p-8 text-center backface-hidden">
-                        <p className="text-2xl text-white">{card.front}</p> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts] */}
+                        <p className="text-2xl text-white">{card.front}</p> {/* */}
                     </div>
                     {/* Back */}
                     <div className="absolute w-full h-full bg-sky-600 rounded-lg flex items-center justify-center p-8 text-center rotate-y-180 backface-hidden">
-                        <p className="text-2xl text-white">{card.back}</p> {/* [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/types.ts] */}
+                        <p className="text-2xl text-white">{card.back}</p> {/* */}
                     </div>
                 </div>
             </div>
@@ -607,11 +748,11 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
 
             <div className="absolute bottom-10 flex gap-4">
                 {!isFlipped ? (
-                    <Button onClick={() => setIsFlipped(true)} className="px-10 py-3 text-lg">Flip</Button> // [cite: shravanisdakve/n/n-0cefof51e73d0aad0fb684c0d3dedc4ae85410c6/components/ui.tsx] */}
+                    <Button onClick={() => setIsFlipped(true)} className="px-10 py-3 text-lg">Flip</Button> //
                 ) : (
                     <>
-                        <Button onClick={() => handleNext(false)} className="bg-red-600 hover:bg-red-700 px-8 py-3 text-lg">Incorrect</Button>
-                        <Button onClick={() => handleNext(true)} className="bg-green-600 hover:bg-green-700 px-8 py-3 text-lg">Correct</Button>
+                        <Button onClick={() => handleNext(false)} className="bg-red-600 hover:bg-red-700 px-8 py-3 text-lg">Incorrect</Button> {/* */}
+                        <Button onClick={() => handleNext(true)} className="bg-green-600 hover:bg-green-700 px-8 py-3 text-lg">Correct</Button> {/* */}
                     </>
                 )}
             </div>
