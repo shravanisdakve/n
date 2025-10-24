@@ -11,7 +11,7 @@ interface CreateRoomModalProps {
 }
 
 type ModalStep = 'selectMode' | 'selectTechnique' | 'configureRoom';
-type RoomMode = 'Solo' | 'Group' | 'College';
+type RoomMode = 'Group' | 'College';
 
 const techniques = [
     { name: 'Active Recall', description: 'Test your memory to strengthen it.', icon: Brain },
@@ -35,11 +35,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
     };
 
     const handleTechniqueSelect = () => {
-        if (selectedMode === 'Solo') {
-            handleCreateRoom(selectedMode, 1);
-        } else {
-            setModalStep('configureRoom');
-        }
+        setModalStep('configureRoom');
     };
 
     const handleCreateRoom = async (mode: RoomMode, maxUsers: number) => {
@@ -72,13 +68,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
         <div className="space-y-4">
             <p className="text-sm text-slate-400 text-center">Choose a mode that best fits your study session.</p>
 
-            <Button onClick={() => handleModeSelect('Solo')} className="w-full flex justify-start items-center p-4 h-auto bg-slate-700 hover:bg-slate-600">
-                <User className="w-5 h-5 mr-4 text-violet-400" />
-                <div>
-                    <p className="font-semibold text-left">Solo Mode</p>
-                    <p className="font-normal text-xs text-slate-400 text-left">Focused, distraction-free</p>
-                </div>
-            </Button>
+
 
             <Button onClick={() => handleModeSelect('Group')} className="w-full flex justify-start items-center p-4 h-auto bg-slate-700 hover:bg-slate-600">
                 <Users className="w-5 h-5 mr-4 text-sky-400" />
@@ -130,7 +120,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
                 placeholder="Enter your topic (e.g., Photosynthesis)"
             />
             
-            <Button onClick={handleTechniqueSelect} disabled={!topic.trim() || (isCreatingRoom && selectedMode === 'Solo')} className="w-full" isLoading={isCreatingRoom && selectedMode === 'Solo'}>
+            <Button onClick={handleTechniqueSelect} disabled={!topic.trim()} className="w-full" isLoading={isCreatingRoom}>
                 Next
             </Button>
         </div>
