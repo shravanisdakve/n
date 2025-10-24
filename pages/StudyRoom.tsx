@@ -1,16 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { type ChatMessage, type StudyRoom as StudyRoomType, type PomodoroState, type Quiz as SharedQuiz } from '../types';
+import { type ChatMessage, type StudyRoom as StudyRoomType, type Quiz as SharedQuiz } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import {
     onRoomUpdate,
     onMessagesUpdate,
     onNotesUpdate,
-    saveRoomMessages,
+    saveRoomMessages, // Keep this if using mock for chat
     joinRoom,
     leaveRoom,
     saveRoomAINotes,
-    updateRoomPomodoroState,
+    // updateRoomPomodoroState, // Remove this import
     saveUserNotes,
     onUserNotesUpdate,
     uploadResource,
@@ -23,7 +23,8 @@ import {
 } from '../services/communityService';
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
-import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, Smile, FolderOpen, AlertTriangle, Info, Timer, Play, Pause, RefreshCw } from 'lucide-react';
+// Remove Timer, Play, Pause, RefreshCw from lucide imports
+import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, Smile, FolderOpen, AlertTriangle, Info } from 'lucide-react';
 import { Input, Button, Textarea, Spinner } from '../components/ui';
 import RoomControls from '../components/RoomControls';
 import VideoTile from '../components/VideoTile';
@@ -35,9 +36,11 @@ import FlashcardGenerator from '../components/FlashcardGenerator';
 import ConsolidatedNotes from '../components/ConsolidatedNotes';
 
 // --- Helper Types & Constants ---
-type ActiveTab = 'chat' | 'participants' | 'ai' | 'timer' | 'notes';
-const FOCUS_DURATION = 25 * 60;
-const BREAK_DURATION = 5 * 60;
+// Remove 'timer' from ActiveTab type
+type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes';
+// Remove FOCUS_DURATION and BREAK_DURATION constants
+// const FOCUS_DURATION = 25 * 60;
+// const BREAK_DURATION = 5 * 60;
 
 interface Quiz {
     topic: string;
@@ -91,8 +94,8 @@ const StudyRoom: React.FC = () => {
     const [sharedQuiz, setSharedQuiz] = useState<SharedQuiz | null>(null);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
 
-    // Pomodoro Timer State
-    const [timeLeft, setTimeLeft] = useState(FOCUS_DURATION);
+    // Remove Pomodoro Timer State
+    // const [timeLeft, setTimeLeft] = useState(FOCUS_DURATION);
     
     const notesFileInputRef = useRef<HTMLInputElement>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
@@ -251,36 +254,10 @@ const StudyRoom: React.FC = () => {
         }
     }, [room, postSystemMessage]); // Added postSystemMessage here too
 
-    // --- Pomodoro Timer Effect ---
-    useEffect(() => {
-        const pomodoro = room?.pomodoro;
-        if (!pomodoro || pomodoro.state !== 'running') {
-            const duration = pomodoro?.mode === 'focus' ? FOCUS_DURATION : BREAK_DURATION;
-            setTimeLeft(duration);
-            return;
-        }
-
-        const duration = pomodoro.mode === 'focus' ? FOCUS_DURATION : BREAK_DURATION;
-
-        const calculateTimeLeft = () => {
-            const elapsed = Math.floor((Date.now() - (pomodoro.startTime as any).toDate().getTime()) / 1000);
-            return Math.max(0, duration - elapsed);
-        };
-
-        const timerInterval = setInterval(() => {
-            const newTimeLeft = calculateTimeLeft();
-            setTimeLeft(newTimeLeft);
-
-            if (newTimeLeft <= 0) {
-                clearInterval(timerInterval);
-                if (room?.createdBy === currentUser?.email) {
-                    handleTimerEnd();
-                }
-            }
-        }, 1000);
-
-        return () => clearInterval(timerInterval);
-    }, [room?.pomodoro, room?.createdBy, currentUser?.email]);
+    // --- Remove Pomodoro Timer Effect ---
+    // useEffect(() => {
+    //     // ... effect content removed ...
+    // }, [room?.pomodoro]); // Remove dependencies related to timer if they were here
 
     // --- Control Handlers ---
     const handleToggleMute = () => {
@@ -377,67 +354,36 @@ const StudyRoom: React.FC = () => {
 
 
 
-    // --- Pomodoro Handlers ---
-    const handleStartTimer = async () => {
-        if (!roomId || !room?.pomodoro) return;
-        const newState: PomodoroState = {
-            ...room.pomodoro,
-            state: 'running',
-            startTime: Date.now(),
-        };
-        await updateRoomPomodoroState(roomId, newState);
-    };
-
-    const handleStopTimer = async () => {
-        if (!roomId || !room?.pomodoro) return;
-        const newState: PomodoroState = {
-            ...room.pomodoro,
-            state: 'stopped',
-            startTime: 0,
-        };
-        await updateRoomPomodoroState(roomId, newState);
-    };
-    
-    const handleResetTimer = async () => {
-        if (!roomId || !room) return;
-        const newState: PomodoroState = {
-            state: 'stopped',
-            mode: 'focus',
-            startTime: 0,
-        };
-        await updateRoomPomodoroState(roomId, newState);
-        await postSystemMessage("Timer has been reset to a new focus session.");
-    };
-
-    const handleTimerEnd = async () => {
-        if (!roomId || !room?.pomodoro) return;
-        const { mode } = room.pomodoro;
-        const nextMode = mode === 'focus' ? 'break' : 'focus';
-        const message = mode === 'focus'
-            ? `Focus session complete! Time for a ${BREAK_DURATION / 60}-minute break.`
-            : "Break's over! Time for a new focus session.";
-        
-        await postSystemMessage(message);
-
-        const newState: PomodoroState = {
-            state: 'stopped',
-            mode: nextMode,
-            startTime: 0,
-        };
-        await updateRoomPomodoroState(roomId, newState);
-    };
+    // --- Remove Pomodoro Handlers ---
+    // const handleStartTimer = async () => { /* ... removed ... */ };
+    // const handleStopTimer = async () => { /* ... removed ... */ };
+    // const handleResetTimer = async () => { /* ... removed ... */ };
+    // const handleTimerEnd = async () => { /* ... removed ... */ };
 
     // --- AI Buddy & Quiz Handlers ---
+    // --- AI Buddy & Quiz Handlers ---
      const handleSendAiMessage = useCallback(async () => {
+        // Add check for notes content
+        if (!notes || notes.trim() === '' || notes.startsWith("Extracting text from")) {
+             setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: "Please upload some notes first using the button above so I have context!" }] }]);
+             setAiInput(''); // Clear input after showing the message
+             return;
+        }
+
         if (!aiInput.trim() || isAiLoading) return;
         
-        const newUserMessage: ChatMessage = { role: 'user', parts: [{ text: aiInput }] };
+        const currentMessageText = aiInput; // Capture input before clearing
+        const newUserMessage: ChatMessage = { role: 'user', parts: [{ text: currentMessageText }] };
         setAiMessages(prev => [...prev, newUserMessage]);
-        setAiInput('');
+        setAiInput(''); // Clear input immediately
         setIsAiLoading(true);
 
+        // --- Log the notes context being sent ---
+        console.log("Sending AI message with notes context (length):", notes.length);
+        // console.log("Notes Content:", notes.substring(0, 200) + "..."); // Optional: log start of notes
+
         try {
-            const stream = await streamStudyBuddyChat(aiInput, notes);
+            const stream = await streamStudyBuddyChat(currentMessageText, notes); // Use captured input
             let modelResponse = '';
             let streamedMessageStarted = false;
 
@@ -449,18 +395,32 @@ const StudyRoom: React.FC = () => {
                 } else {
                     setAiMessages(prev => {
                         const newMessages = [...prev];
-                        newMessages[newMessages.length - 1].parts = [{ text: modelResponse }];
+                        // Ensure the last message exists and is from the model before updating
+                        if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'model') {
+                           newMessages[newMessages.length - 1].parts = [{ text: modelResponse }];
+                        } else {
+                            // This case handles potential rapid state updates or unexpected scenarios
+                           console.warn("Could not find previous model message to update, adding new one.");
+                           return [...prev, { role: 'model', parts: [{ text: modelResponse }] }];
+                        }
                         return newMessages;
                     });
                 }
             }
+            // Add a check in case the stream finished without starting (e.g., empty response)
+             if (!streamedMessageStarted) {
+                console.warn("AI stream finished without generating content.");
+             }
+
         } catch (err) {
-            console.error(err);
-            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: "Sorry, an error occurred." }] }]);
+            console.error("Error calling streamStudyBuddyChat:", err); // Log the specific error
+            // --- Improve Error Display ---
+            const errorText = err instanceof Error ? err.message : "Sorry, an unexpected error occurred while contacting the AI.";
+            setAiMessages(prev => [...prev, { role: 'model', parts: [{ text: `Error: ${errorText}` }] }]);
         } finally {
             setIsAiLoading(false);
         }
-    }, [aiInput, isAiLoading, notes]);
+    }, [aiInput, isAiLoading, notes, roomId]); // Added roomId to dependencies as it's used i
     
     const handleGenerateQuiz = async () => {
         if (isAiLoading || !notes.trim() || !roomId) return;
@@ -594,7 +554,8 @@ const StudyRoom: React.FC = () => {
                         <TabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={MessageSquare} label="Chat" />
                         <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="Participants" count={participants.length} />
                         <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI Buddy" />
-                        <TabButton id="timer" activeTab={activeTab} setActiveTab={setActiveTab} icon={Timer} label="Timer" />
+                        {/* Remove Timer Tab Button */}
+                        {/* <TabButton id="timer" activeTab={activeTab} setActiveTab={setActiveTab} icon={Timer} label="Timer" /> */}
                         <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
                     </div>
                     
@@ -618,14 +579,17 @@ const StudyRoom: React.FC = () => {
                             notes={notes}
                             isExtracting={isExtracting}
                             onUploadClick={() => notesFileInputRef.current?.click()}
-                            quiz={quiz}
-                            onAnswerQuiz={handleAnswerQuiz}
-                            onQuizMe={handleQuizMe}
+                            // quiz={quiz} // Remove this if quiz state is local to AiChat
+                            // onAnswerQuiz={handleAnswerQuiz} // Remove this if quiz state is local to AiChat
+                            // onQuizMe={handleQuizMe} // Remove this if quiz state is local to AiChat
+                             onQuizMe={handleGenerateQuiz} // Keep this if generating group quiz
+                             sharedQuiz={sharedQuiz} // Pass shared quiz state
                             chatEndRef={aiChatEndRef}
                             isLoading={isAiLoading}
                         />
                     )}
-                    {activeTab === 'timer' && (
+                     {/* Remove Timer Panel */}
+                    {/* {activeTab === 'timer' && (
                         <FocusTimerPanel
                             pomodoro={room?.pomodoro}
                             timeLeft={timeLeft}
@@ -633,7 +597,7 @@ const StudyRoom: React.FC = () => {
                             onStop={handleStopTimer}
                             onReset={handleResetTimer}
                         />
-                    )}
+                    )} */}
                     {activeTab === 'notes' && (
                         <ConsolidatedNotes
                             initialUserNotes={userNotes}
@@ -812,63 +776,11 @@ const AiPanel: React.FC<any> = ({ messages, input, setInput, onSend, notes, isEx
     </div>
 );
 
-const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-};
-
-const FocusTimerPanel: React.FC<{pomodoro: PomodoroState | undefined, timeLeft: number, onStart: () => void, onStop: () => void, onReset: () => void}> = ({ pomodoro, timeLeft, onStart, onStop, onReset }) => {
-    if (!pomodoro) return null;
-
-    const duration = pomodoro.mode === 'focus' ? FOCUS_DURATION : BREAK_DURATION;
-    const progress = (duration - timeLeft) / duration * 100;
-
-    return (
-         <div className="flex flex-col items-center justify-center flex-1 p-4 text-center">
-            <div className="relative w-48 h-48 flex items-center justify-center">
-                <svg className="w-full h-full" viewBox="0 0 100 100">
-                    <circle className="text-slate-700" strokeWidth="8" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
-                    <circle
-                        className={pomodoro.mode === 'focus' ? "text-violet-500" : "text-sky-500"}
-                        strokeWidth="8"
-                        strokeDasharray={2 * Math.PI * 45}
-                        strokeDashoffset={(2 * Math.PI * 45) * (1 - progress / 100)}
-                        strokeLinecap="round"
-                        stroke="currentColor"
-                        fill="transparent"
-                        r="45"
-                        cx="50"
-                        cy="50"
-                        style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', transition: 'stroke-dashoffset 1s linear' }}
-                    />
-                </svg>
-                <div className="absolute flex flex-col">
-                     <span className="text-4xl font-bold font-mono text-white">{formatTime(timeLeft)}</span>
-                     <span className={`text-sm font-semibold uppercase tracking-wider ${pomodoro.mode === 'focus' ? 'text-violet-400' : 'text-sky-400'}`}>
-                        {pomodoro.mode}
-                    </span>
-                </div>
-            </div>
-
-             <div className="flex items-center gap-4 mt-8">
-                <Button onClick={onReset} className="px-4 py-2 bg-slate-700 hover:bg-slate-600" title="Reset Timer">
-                    <RefreshCw size={20}/>
-                </Button>
-                {pomodoro.state === 'running' ? (
-                     <Button onClick={onStop} className="px-6 py-4 text-lg bg-amber-600 hover:bg-amber-700" title="Pause Timer">
-                        <Pause size={24}/>
-                    </Button>
-                ) : (
-                    <Button onClick={onStart} className="px-6 py-4 text-lg" title="Start Timer">
-                        <Play size={24}/>
-                    </Button>
-                )}
-                 <div className="w-[52px]"></div> {/* Spacer */}
-             </div>
-        </div>
-    )
-};
+// --- Remove FocusTimerPanel Component Definition ---
+// const formatTime = (seconds: number) => { /* ... removed ... */ };
+// const FocusTimerPanel: React.FC<{ /* ... props removed ... */ }> = ({ /* ... params removed ... */ }) => {
+//     /* ... component content removed ... */
+// };
 
 
 export default StudyRoom;

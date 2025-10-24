@@ -67,11 +67,6 @@ export const addRoom = async (name: string, courseId: string, maxUsers: number, 
         createdBy,
         university,
         users: [creator], 
-        pomodoro: {
-            state: 'stopped',
-            mode: 'focus',
-            startTime: 0,
-        },
         technique: selectedTechnique,
         topic: topic,
     };
@@ -113,14 +108,7 @@ export const leaveRoom = async (id: string, user: { email: string | null; displa
     }
 };
 
-export const updateRoomPomodoroState = async (roomId: string, pomodoroState: PomodoroState) => {
-    // if (!db) return; // Firebase disabled, use mock
-    const room = mockRooms.find(r => r.id === roomId);
-    if (room) {
-        room.pomodoro = pomodoroState;
-        console.log(`Mock room ${roomId} pomodoro state updated.`);
-    }
-};
+
 
 // --- Message Management (using a subcollection) ---
 

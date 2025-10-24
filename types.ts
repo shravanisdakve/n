@@ -42,11 +42,7 @@ export interface Mood {
     timestamp: number;
 }
 
-export interface PomodoroState {
-    state: 'stopped' | 'running';
-    mode: 'focus' | 'break';
-    startTime: number; // UTC timestamp
-}
+
 
 export interface StudyRoom {
     id:string;
@@ -57,7 +53,7 @@ export interface StudyRoom {
     // In a real app, this would be a list of user IDs
     users: { email: string; displayName: string }[];
     createdBy: string; // user email
-    pomodoro?: PomodoroState;
+
     technique?: string;
     topic?: string;
 }
