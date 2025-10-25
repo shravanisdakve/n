@@ -135,13 +135,13 @@ export const getFlashcards = async (courseId: string): Promise<Flashcard[]> => {
     return Promise.resolve(getMockFlashcards(courseId));
 };
 
-export const addFlashcards = async (courseId: string, flashcards: Omit<Flashcard, 'id'>[]): Promise<void> => {
+export const addFlashcards = async (courseId: string, flashcards: Flashcard[]): Promise<void> => {
     console.log("Adding flashcards to mock service...");
     const mockFlashcards = getMockFlashcards(courseId);
-    const newFlashcards = flashcards.map(f => ({ ...f, id: `mock_flashcard_${Date.now()}` }));
-    const updatedFlashcards = [...mockFlashcards, ...newFlashcards];
+    // const newFlashcards = flashcards.map(f => ({ ...f, id: `mock_flashcard_${Date.now()}` })); // <-- This was the bug
+    const updatedFlashcards = [...mockFlashcards, ...flashcards]; // <-- Use the flashcards (with their good IDs) directly
     setMockFlashcards(courseId, updatedFlashcards);
-    console.log("Added flashcards to mock service:", newFlashcards);
+    console.log("Added flashcards to mock service:", flashcards);
     return Promise.resolve();
 };
 
