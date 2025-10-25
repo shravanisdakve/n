@@ -1,11 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Play, Pause, Volume2, VolumeX, Music } from 'lucide-react';
 
+// --- FIX: Replaced web links with your local files from the /public folder ---
 const tracks = [
-  { name: 'Lofi Chill', url: 'https://cdn.pixabay.com/audio/2022/10/18/audio_7313085160.mp3' },
-  { name: 'Ambient Focus', url: 'https://cdn.pixabay.com/audio/2024/05/20/audio_213459c55b.mp3' },
-  { name: 'Classical Study', url: 'https://cdn.pixabay.com/audio/2022/11/17/audio_85d80d283e.mp3' },
+  { 
+    name: 'My Music 1', 
+    url: '/music1.mp3' // This path works because music1.mp3 is in /public
+  },
+  { 
+    name: 'My Music 2', 
+    url: '/music2.mp3' // This path works because music2.mp3 is in /public
+  },
+  { 
+    name: 'Lofi (Web)', 
+    url: 'https://archive.org/download/ShelterLofi/ShelterLofi.mp3' // Kept one web link as a backup
+  },
 ];
+// --- END FIX ---
 
 const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
@@ -13,65 +24,72 @@ const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Declarative handler for play/pause state
   const handlePlayPause = (index: number) => {
+    console.log(`handlePlayPause: Clicked track index=${index}, currentTrackIndex=${currentTrackIndex}`);
+    
     if (index === currentTrackIndex) {
       setIsPlaying(prev => !prev);
+      console.log(`Toggling play state for index ${index}`);
     } else {
+      console.log(`Switching to track index ${index}`);
       setCurrentTrackIndex(index);
       setIsPlaying(true);
     }
   };
 
-  // Mute toggle handler
   const handleMuteToggle = () => {
     setIsMuted(prev => !prev);
+    console.log(`Toggling mute state to ${!isMuted}`);
   };
-  
-  // Effect to control audio playback based on state
+
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio) {
+        console.log("Audio element ref not found");
+        return;
+    }
 
-    const playAudio = () => {
+    if (currentTrackIndex !== null && tracks[currentTrackIndex]) {
+        const newSrc = tracks[currentTrackIndex].url;
+        if (audio.src !== newSrc) {
+            console.log(`Setting audio source to: ${newSrc}`);
+            audio.src = newSrc;
+        }
+    } else {
+        if (audio.src) {
+             console.log("No track selected, clearing src and pausing");
+             audio.src = '';
+             audio.pause();
+        }
+        return; 
+    }
+
+    if (isPlaying) {
+      console.log("Attempting to play...");
       const playPromise = audio.play();
       if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.error("Audio play failed", error);
-          setIsPlaying(false); // Reset state if play fails
+        playPromise.then(() => {
+          console.log("Playback started successfully.");
+        }).catch(error => {
+          console.error("Audio play failed:", error); 
+          setIsPlaying(false);
         });
-      }
-    };
-
-    if (isPlaying && currentTrackIndex !== null) {
-      const currentSrc = tracks[currentTrackIndex].url;
-      
-      if (audio.src !== currentSrc) {
-        audio.src = currentSrc;
-        // The `loadeddata` event is fired when the media is ready to be played.
-        audio.addEventListener('loadeddata', playAudio);
-        audio.load(); // Explicitly load the new source
       } else {
-        playAudio(); // If src is the same, just play.
+          console.log("audio.play() did not return a promise.");
       }
-      
-      // Cleanup function to remove the event listener on re-render or unmount
-      return () => {
-        audio.removeEventListener('loadeddata', playAudio);
-      };
-
     } else {
+      console.log("Pausing audio.");
       audio.pause();
     }
+
   }, [isPlaying, currentTrackIndex]);
 
-  // Effect to control mute state
   useEffect(() => {
-      if (audioRef.current) {
-          audioRef.current.muted = isMuted;
-      }
+    if (audioRef.current) {
+        console.log(`Setting audio muted state to: ${isMuted}`);
+        audioRef.current.muted = isMuted;
+    }
   }, [isMuted]);
-
 
   return (
     <div className="absolute bottom-24 right-4 bg-slate-800 rounded-lg shadow-2xl p-4 w-64 ring-1 ring-slate-700 z-30 animate-in fade-in-50 slide-in-from-bottom-5">
@@ -94,11 +112,15 @@ const MusicPlayer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
         </button>
       </div>
-      {/* A single audio element is always in the DOM, controlled by the ref and effects */}
       <audio
         ref={audioRef}
-        onEnded={() => setIsPlaying(false)}
-        muted={isMuted}
+        onEnded={() => {
+            console.log("Track ended.");
+            setIsPlaying(false); 
+        }}
+        onError={(e) => {
+             console.error("Audio Element Error:", e);
+        }}
       />
     </div>
   );
