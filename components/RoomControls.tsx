@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './ui';
-// --- FIX: Added Clock import ---
-import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Smile, Music, Share2, Clock } from 'lucide-react';
+// --- FIX: Add UserPlus icon ---
+import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Smile, Music, Share2, Clock, UserPlus } from 'lucide-react';
 // --- END FIX ---
 
 
@@ -18,8 +18,9 @@ interface RoomControlsProps {
   onToggleMusic: () => void;
   onShare: () => void;
   roomId: string;
-  // --- FIX: Added formattedSessionTime prop ---
   formattedSessionTime: string;
+  // --- FIX: Added onAddTestUser prop ---
+  onAddTestUser: () => void;
   // --- END FIX ---
 }
 
@@ -38,20 +39,35 @@ const RoomControls: React.FC<RoomControlsProps> = ({
   onToggleMusic,
   onShare,
   roomId,
-  formattedSessionTime // Destructure the new prop
+  formattedSessionTime,
+  onAddTestUser // Destructure the new prop
 }) => {
   const [showReactions, setShowReactions] = React.useState(false);
 
   return (
     <div className="bg-slate-900/80 backdrop-blur-md px-6 py-3 flex justify-between items-center ring-1 ring-slate-700">
-      {/* Left Group (Placeholder/Empty) */}
+      {/* Left Group (Placeholder/Empty or Add Test User Button) */}
       <div className="w-1/3">
-         {/* Can add room name or other info here later if needed */}
+         {/* --- FIX: Added Add Test User Button (for development) --- */}
+         {/* Conditionally render based on environment if needed, otherwise always show */}
+         {process.env.NODE_ENV === 'development' && (
+             <Button
+                onClick={onAddTestUser}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                title="Add a mock user to the room for testing"
+             >
+                 <UserPlus size={14} className="mr-1" /> Add Test User
+             </Button>
+         )}
+         {/* --- END FIX --- */}
       </div>
 
       {/* Center Group (Main Controls) */}
       <div className="flex justify-center items-center gap-3 w-1/3 relative">
-        {/* Mute/Unmute */}
+         {/* ... (Mute, Camera, ScreenShare, Reactions, Music, Share buttons remain the same) ... */}
+         {/* Mute/Unmute */}
         <Button
           onClick={onToggleMute}
           disabled={!mediaReady}
@@ -130,12 +146,11 @@ const RoomControls: React.FC<RoomControlsProps> = ({
 
       {/* Right Group (Timer & Leave) */}
       <div className="flex justify-end items-center gap-4 w-1/3">
-        {/* --- FIX: Added Session Timer Display --- */}
+        {/* Session Timer */}
         <div className="flex items-center gap-2 text-sm font-mono text-slate-300 bg-slate-700/50 px-3 py-1 rounded-full">
             <Clock size={14} className="text-violet-400"/>
             <span>{formattedSessionTime}</span>
         </div>
-        {/* --- END FIX --- */}
 
         {/* Leave Room Button */}
         <Button

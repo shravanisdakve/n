@@ -111,6 +111,20 @@ const StudyRoom: React.FC = () => {
     const prevParticipantsRef = useRef<StudyRoomType['users']>([]);
     const welcomeMessageSent = useRef(false);
 
+    // --- NEW: Handler to add a test user ---
+    const handleAddTestUser = () => {
+        if (!roomId) return;
+        const testUser = {
+            // Create a slightly unique email/name each time to avoid potential key issues if clicked rapidly
+            email: `testuser_${Date.now()}@example.com`,
+            displayName: `Test User ${Math.floor(Math.random() * 100)}`
+        };
+        console.log("Attempting to add test user:", testUser);
+        joinRoom(roomId, testUser); // Call the existing joinRoom service function
+        // Note: The participant list will update automatically via the onRoomUpdate listener
+    };
+    // --- END NEW HANDLER ---
+
     const participantChatMessages = useMemo(() => {
         return allMessages.filter(msg => msg.role === 'user' && msg.user?.email !== SYSTEM_EMAIL);
     }, [allMessages]);
@@ -673,6 +687,7 @@ const StudyRoom: React.FC = () => {
                 onShare={() => setShowShareModal(true)}
                 roomId={roomId || ''}
                 formattedSessionTime={formatElapsedTime(elapsedTime)} // Pass formatted time
+                onAddTestUser={handleAddTestUser}
             />
             {/* --- END FIX --- */}
         </div>

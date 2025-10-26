@@ -54,27 +54,34 @@ export const getRoom = async (id: string): Promise<StudyRoom | null> => {
 export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: string, university: string | undefined, selectedTechnique: string, topic: string): Promise<StudyRoom | null> => {
     console.log("Mocking room creation for:", name);
 
+    // --- FIX: Remove the default creator if currentUser is null ---
+    // Use the actual creator's info passed in 'createdBy',
+    // assume addRoom won't be called without a valid creator email.
+    // If you *need* a creator even if logged out, you might need a different approach.
     const creator = {
-        email: createdBy,
-        displayName: 'Creator'
+        email: createdBy, // Use the provided email
+        displayName: 'Creator' // Or fetch displayName if available/needed
     };
+    // --- END FIX ---
+
 
     const mockRoom: StudyRoom = {
         id: `mock_${Date.now()}`,
         name,
         courseId,
         maxUsers,
-        createdBy,
+        createdBy, // Keep track of the original creator email
         university,
-        users: [creator], 
+        users: [creator], // Start with only the actual creator
         technique: selectedTechnique,
         topic: topic,
     };
-    
+
     mockRooms.push(mockRoom);
     console.log("Mock room added. Current rooms:", mockRooms);
     return Promise.resolve(mockRoom);
 };
+
 
 export const joinRoom = async (id: string, user: { email: string | null; displayName: string | null; }) => {
     // if (!user.email || !db) return; // Firebase disabled, use mock
