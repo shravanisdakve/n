@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 // --- REMOVE Modal, Input imports if no longer needed here ---
-import { PageHeader, Button } from '../components/ui';
+import { PageHeader, Button, Input } from '../components/ui';
 // --- END REMOVE ---
 import { useAuth } from '../contexts/AuthContext';
 import { type Course, type Mood as MoodType } from '../types';
@@ -215,7 +215,6 @@ interface ToolCardProps {
     icon: React.ElementType;
     color: string;
     bgColor: string;
-    key: string;
 }
 const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon, color, bgColor }) => {
     return (
@@ -237,7 +236,12 @@ const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon
 
 const ToolsGrid: React.FC = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-        {tools.map(tool => <ToolCard key={tool.key} {...tool} />)}
+        {/* --- FIX: Destructure key from the rest of the props --- */}
+        {tools.map(tool => {
+            const { key, ...rest } = tool; // 'key' is for React, 'rest' has all other props
+            return <ToolCard key={key} {...rest} />;
+        })}
+        {/* --- END FIX --- */}
     </div>
 );
 

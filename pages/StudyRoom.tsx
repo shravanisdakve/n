@@ -301,7 +301,7 @@ const StudyRoom: React.FC = () => {
         return () => clearTimeout(timer);
     }, [participantChatMessages]);
 
-    useEffect(() => { aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages, sharedQuiz]);
+    useEffect(() => { aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [aiMessages, sharedQuiz])
 
     useEffect(() => {
         if (room && room.technique && room.topic && !welcomeMessageSent.current) {
