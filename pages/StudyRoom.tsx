@@ -110,6 +110,10 @@ const StudyRoom: React.FC = () => {
     const prevParticipantsRef = useRef<StudyRoomType['users']>([]);
     const welcomeMessageSent = useRef(false);
 
+    // --- FIX 1: Add a ref for the session ID ---
+    const sessionIdRef = useRef<string | null>(null);
+    // --- END FIX ---
+
     // --- NEW: Handler to add a test user ---
     const handleAddTestUser = () => {
         if (!roomId) return;
@@ -226,10 +230,16 @@ const StudyRoom: React.FC = () => {
     useEffect(() => {
         if (!roomId || !currentUser) return;
 
-        let sessionId: string | null = null;
+        // --- REMOVED: let sessionId: string | null = null; ---
 
         joinRoom(roomId, currentUser);
-        startSession('study-room', roomId).then(id => sessionId = id);
+        
+        // --- FIX 2: Use the sessionIdRef ---
+        startSession('study-room', roomId).then(id => {
+            sessionIdRef.current = id; // Assign the ID to the ref
+            console.log("Study session started:", id);
+        });
+        // --- END FIX ---
 
         // --- Start Timer ---
         setElapsedTime(0); // Reset timer on join
@@ -287,9 +297,15 @@ const StudyRoom: React.FC = () => {
             if (currentUser) {
                 leaveRoom(roomId, currentUser);
             }
-            if (sessionId) {
-                endSession(sessionId);
+
+            // --- FIX 2 (cleanup): Use the ref here as well ---
+            // This now acts as a fallback if the user closes the tab
+            if (sessionIdRef.current) {
+                console.log("Ending session from cleanup:", sessionIdRef.current);
+                endSession(sessionIdRef.current);
+                sessionIdRef.current = null;
             }
+            // --- END FIX ---
         };
     }, [roomId, currentUser, navigate]);
 
@@ -324,6 +340,14 @@ const StudyRoom: React.FC = () => {
     };
 
     const handleHangUp = async () => {
+        // --- FIX 3: Explicitly end the session on "Leave" button click ---
+        if (sessionIdRef.current) {
+            console.log("Ending session from HangUp:", sessionIdRef.current);
+            await endSession(sessionIdRef.current);
+            sessionIdRef.current = null; // Clear ref so cleanup doesn't run it again
+        }
+        // --- END FIX ---
+
         if (roomId && currentUser) {
             await leaveRoom(roomId, currentUser);
         }
