@@ -31,7 +31,7 @@ import VideoTile from '../components/VideoTile';
 import Reactions, { type Reaction } from '../components/Reactions';
 import MusicPlayer from '../components/MusicPlayer';
 import ShareModal from '../components/ShareModal';
-import ConsolidatedNotes from '../components/ConsolidatedNotes';
+import StudyRoomNotesPanel from '../components/StudyRoomNotesPanel'; // Import the new component
 
 
 // ... (Helper Types & formatElapsedTime function remain the same) ...
@@ -82,8 +82,7 @@ const StudyRoom: React.FC = () => {
     const [isCameraOn, setIsCameraOn] = useState(true);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
-    const [userNotes, setUserNotes] = useState('');
-    const [isSavingUserNotes, setIsSavingUserNotes] = useState(false);
+    const [isSavingSharedNote, setIsSavingSharedNote] = useState(false); // NEW: Loading state for saving shared note
     const [resources, setResources] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [reactions, setReactions] = useState<Reaction[]>([]);
@@ -257,7 +256,7 @@ const StudyRoom: React.FC = () => {
 
         const unsubMessages = onMessagesUpdate(roomId, setAllMessages);
         const unsubNotes = onNotesUpdate(roomId, setNotes);
-        const unsubUserNotes = onUserNotesUpdate(roomId, setUserNotes);
+
         const unsubResources = onResourcesUpdate(roomId, setResources);
         const unsubQuiz = onQuizUpdate(roomId, (quiz) => {
             setSharedQuiz(quiz);
@@ -282,7 +281,7 @@ const StudyRoom: React.FC = () => {
             unsubRoom();
             unsubMessages();
             unsubNotes();
-            unsubUserNotes();
+
             unsubResources();
             unsubQuiz();
             if (currentUser) {
@@ -410,11 +409,18 @@ const StudyRoom: React.FC = () => {
         setReactions(prev => [...prev, { id: Date.now(), emoji }]);
     };
 
-    const handleSaveUserNotes = async (notes: string) => {
+    const handleSaveSharedNote = async (content: string) => {
         if (!roomId) return;
-        setIsSavingUserNotes(true);
-        await saveUserNotes(roomId, notes);
-        setIsSavingUserNotes(false);
+        setIsSavingSharedNote(true);
+        try {
+            await saveRoomAINotes(roomId, content); // Use the service function for shared AI notes
+            console.log("Shared note saved.");
+        } catch (error) {
+            console.error("Failed to save shared note:", error);
+            // Optionally show error to user
+        } finally {
+            setIsSavingSharedNote(false);
+        }
     };
 
     const handleUploadResource = async (file: File) => {
@@ -653,17 +659,14 @@ const StudyRoom: React.FC = () => {
                         />
                     )}
                     {activeTab === 'notes' && (
-                        <ConsolidatedNotes
-                           initialUserNotes={userNotes}
-                           onSaveUserNotes={handleSaveUserNotes}
-                           isSaving={isSavingUserNotes}
-                           resources={resources}
-                           onUploadResource={handleUploadResource}
-                           onDeleteResource={handleDeleteResource}
-                           isUploading={isUploading}
-                           aiNotes={notes}
-                           isExtracting={isExtracting}
-                           onUploadAINotesClick={() => notesFileInputRef.current?.click()}
+                        <StudyRoomNotesPanel
+                            sharedNoteContent={notes} // Pass the shared text content
+                            resources={resources} // Pass the list of shared files
+                            onSaveSharedNote={handleSaveSharedNote} // Pass the save handler for text
+                            onUploadResource={handleUploadResource} // Pass the file upload handler
+                            onDeleteResource={handleDeleteResource} // Pass the file delete handler
+                            isSavingNote={isSavingSharedNote} // Pass loading state for saving text
+                            isUploading={isUploading} // Pass loading state for file upload
                         />
                     )}
                 </aside>
