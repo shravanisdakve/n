@@ -53,10 +53,10 @@ export const getRoom = async (id: string): Promise<StudyRoom | null> => {
 
 export const addRoom = async (name: string, courseId: string, maxUsers: number, createdBy: string, university: string | undefined, selectedTechnique: string, topic: string): Promise<StudyRoom | null> => {
     console.log("Mocking room creation for:", name);
-    
+
     const creator = {
-        email: auth.currentUser?.email || 'test@example.com',
-        displayName: auth.currentUser?.displayName || 'Test User'
+        email: createdBy,
+        displayName: 'Creator'
     };
 
     const mockRoom: StudyRoom = {
@@ -71,7 +71,7 @@ export const addRoom = async (name: string, courseId: string, maxUsers: number, 
         topic: topic,
     };
     
-    mockRooms.push(mockRoom); // Add the new room to the mock array
+    mockRooms.push(mockRoom);
     console.log("Mock room added. Current rooms:", mockRooms);
     return Promise.resolve(mockRoom);
 };
