@@ -1,25 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-// --- REMOVE Modal, Input imports if no longer needed here ---
 import { PageHeader, Button, Input } from '../components/ui';
-// --- END REMOVE ---
 import { useAuth } from '../contexts/AuthContext';
 import { type Course, type Mood as MoodType } from '../types';
-import { getTimeOfDayGreeting, getMostUsedTool, getBreakActivitySuggestion, recordMood } from '../services/personalizationService';
-import { getProductivityReport, recordPomodoroCycle } from '../services/analyticsService';
+import { getTimeOfDayGreeting, getMostUsedTool } from '../services/personalizationService';
+import { getProductivityReport } from '../services/analyticsService';
 import { getCourses, addCourse, deleteCourse } from '../services/courseService';
 import GoalsWidget from '../components/GoalsWidget';
-// --- REMOVE Edit3 import ---
+import MoodCheckin from '../components/MoodCheckin'; // Import new MoodCheckin
+import { getSuggestionForMood } from '../services/geminiService'; // Import AI suggestion service
 import {
     MessageSquare, Share2, FileText, Code, ArrowRight,
     Target, Lightbulb, Timer, Zap, BookOpen,
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
-    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat // Removed Edit3
+    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles // Added Sparkles
 } from 'lucide-react';
-// --- END REMOVE ---
 
-// --- (ProductivityInsights, MyCourses, MoodCheckin components - No changes needed) ---
-// Define or import these components if they are not already in this file
 const formatSeconds = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
     const hours = Math.floor(seconds / 3600);
@@ -199,45 +195,6 @@ const MyCourses: React.FC = () => {
         </div>
     );
 }
-const MoodCheckin: React.FC<{ onMoodSelect: () => void }> = ({ onMoodSelect }) => {
-    const moods: { emoji: string; name: MoodType['mood'] }[] = [
-        { emoji: '😊', name: 'Happy' },
-        { emoji: '😌', name: 'Calm' },
-        { emoji: '🤯', name: 'Overwhelmed' },
-        { emoji: '😥', name: 'Sad' },
-        { emoji: '😡', name: 'Angry' },
-    ];
-
-    const handleMoodClick = (mood: MoodType['mood']) => {
-        recordMood({ mood });
-        onMoodSelect();
-        // Also hide it after selection
-        sessionStorage.setItem('moodCheckedIn', 'true');
-    };
-
-    return (
-        <div className="bg-slate-800/50 p-6 rounded-xl ring-1 ring-slate-700">
-            <h3 className="text-lg font-bold text-slate-100 flex items-center mb-4">
-                <Lightbulb className="w-5 h-5 mr-3 text-yellow-400" />
-                How are you feeling?
-            </h3>
-            <p className="text-sm text-slate-400 mb-5">Check in to track your mood over time.</p>
-            <div className="flex justify-around">
-                {moods.map(({ emoji, name }) => (
-                    <button
-                        key={name}
-                        onClick={() => handleMoodClick(name)}
-                        className="text-4xl transform transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-violet-400 rounded-full p-2"
-                        aria-label={`Select mood: ${name}`}
-                    >
-                        {emoji}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-};
-
 
 const tools = [
   { key: 'tutor', name: 'AI Tutor', href: '/tutor', description: 'Practice concepts with your AI tutor.', icon: MessageSquare, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
@@ -289,18 +246,14 @@ const taglines = [
 ];
 
 const StudyHub: React.FC = () => {
-  // --- REMOVE updateUserProfile import if only used for modal ---
   const { currentUser } = useAuth();
-  // --- END REMOVE ---
   const navigate = useNavigate();
   const [mostUsedToolKey, setMostUsedToolKey] = useState<string | null>(null);
   const [showMoodCheckin, setShowMoodCheckin] = useState(true);
-  // --- REMOVE state for profile modal ---
-  // const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  // --- END REMOVE ---
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null); // New state for AI suggestion
+  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false); // New state for loading
 
   useEffect(() => {
-    // ... (fetch logic remains) ...
     const fetchMostUsedTool = async () => {
         const toolKey = await getMostUsedTool();
         setMostUsedToolKey(toolKey);
@@ -312,14 +265,21 @@ const StudyHub: React.FC = () => {
     }
   }, []);
 
-  const handleMoodSelected = () => {
+  const handleMoodSelected = async (mood: MoodType['mood']) => { // Modified to accept mood
       setShowMoodCheckin(false);
+      setIsLoadingSuggestion(true);
+      setAiSuggestion(null); // Clear old suggestion
+      
+      try {
+        const suggestion = await getSuggestionForMood(mood);
+        setAiSuggestion(suggestion);
+      } catch (error) {
+        console.error("Error getting AI suggestion:", error);
+        setAiSuggestion("Couldn't get a suggestion right now.");
+      } finally {
+        setIsLoadingSuggestion(false);
+      }
   }
-
-  // --- REMOVE save handler for profile ---
-  // const handleProfileSave = async (newName: string) => { ... };
-  // --- END REMOVE ---
-
 
   const greeting = getTimeOfDayGreeting();
   const mostUsedTool = tools.find(t => t.key === mostUsedToolKey);
@@ -328,14 +288,9 @@ const StudyHub: React.FC = () => {
 
   return (
     <div className="space-y-8">
-        {/* --- REMOVED Edit button wrapper div --- */}
         <PageHeader title={`${greeting}, ${firstName}!`} subtitle={tagline} />
-        {/* --- END REMOVE --- */}
-
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* ... (Rest of the Dashboard layout remains the same) ... */}
-        {/* Study Room block */}
         <div className="lg:col-span-2 space-y-8">
             <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 text-center">
                 <h2 className="text-2xl font-bold text-slate-100 mb-2 flex items-center justify-center">
@@ -349,13 +304,11 @@ const StudyHub: React.FC = () => {
                 </Button>
             </div>
 
-             {/* Quick Access & Tools */}
             <div>
                 {mostUsedTool && (
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold text-slate-100 mb-4 flex items-center"><Star className="w-6 h-6 mr-3 text-yellow-400" /> Quick Access</h2>
                         <Link to={mostUsedTool.href} className="group block p-6 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl hover:bg-slate-700/80 transition-all duration-300 ring-2 ring-violet-500 shadow-lg shadow-violet-500/10">
-                            {/* ... Tool card content ... */}
                              <div className="flex items-center space-x-4">
                                 <div className={`p-3 rounded-lg ${mostUsedTool.bgColor}`}>
                                     <mostUsedTool.icon className={`w-6 h-6 ${mostUsedTool.color}`} />
@@ -374,23 +327,25 @@ const StudyHub: React.FC = () => {
             </div>
         </div>
 
-        {/* Right Sidebar Widgets */}
          <div className="space-y-8">
           <GoalsWidget />
           {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
+          {(isLoadingSuggestion || aiSuggestion) && (
+            <div className="bg-slate-800/50 p-4 rounded-xl ring-1 ring-slate-700 flex items-center gap-4">
+              <Sparkles className="text-sky-400 w-8 h-8 flex-shrink-0" />
+              <div>
+                <h4 className="font-semibold text-lg text-sky-300">Smart Suggestion</h4>
+                {isLoadingSuggestion && <p className="text-slate-300">Thinking...</p>}
+                {aiSuggestion && <p className="text-slate-100">{aiSuggestion}</p>}
+              </div>
+            </div>
+          )}
           <ProductivityInsights />
           <MyCourses />
         </div>
       </div>
-
-      {/* --- REMOVED Profile Edit Modal rendering --- */}
-      {/* {currentUser && ( <ProfileEditModal ... /> )} */}
-      {/* --- END REMOVE --- */}
-
     </div>
   );
 };
-
-// --- (Other components like ProductivityInsights, MyCourses etc. remain) ---
 
 export default StudyHub;
