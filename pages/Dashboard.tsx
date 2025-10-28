@@ -199,7 +199,44 @@ const MyCourses: React.FC = () => {
         </div>
     );
 }
-const MoodCheckin: React.FC<{onMoodSelect:()=>void}> = ({onMoodSelect}) => { /* ... component implementation ... */ return <div className="bg-slate-800/50 p-4 rounded-xl ring-1 ring-slate-700">Mood Check-in Placeholder</div>; };
+const MoodCheckin: React.FC<{ onMoodSelect: () => void }> = ({ onMoodSelect }) => {
+    const moods: { emoji: string; name: MoodType['mood'] }[] = [
+        { emoji: '😊', name: 'Happy' },
+        { emoji: '😌', name: 'Calm' },
+        { emoji: '🤯', name: 'Overwhelmed' },
+        { emoji: '😥', name: 'Sad' },
+        { emoji: '😡', name: 'Angry' },
+    ];
+
+    const handleMoodClick = (mood: MoodType['mood']) => {
+        recordMood({ mood });
+        onMoodSelect();
+        // Also hide it after selection
+        sessionStorage.setItem('moodCheckedIn', 'true');
+    };
+
+    return (
+        <div className="bg-slate-800/50 p-6 rounded-xl ring-1 ring-slate-700">
+            <h3 className="text-lg font-bold text-slate-100 flex items-center mb-4">
+                <Lightbulb className="w-5 h-5 mr-3 text-yellow-400" />
+                How are you feeling?
+            </h3>
+            <p className="text-sm text-slate-400 mb-5">Check in to track your mood over time.</p>
+            <div className="flex justify-around">
+                {moods.map(({ emoji, name }) => (
+                    <button
+                        key={name}
+                        onClick={() => handleMoodClick(name)}
+                        className="text-4xl transform transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-violet-400 rounded-full p-2"
+                        aria-label={`Select mood: ${name}`}
+                    >
+                        {emoji}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 
 const tools = [
