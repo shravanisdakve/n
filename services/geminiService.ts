@@ -239,3 +239,25 @@ Example for 'Happy': 'Great! Now is a perfect time to tackle that challenging to
     return "Could not get an AI suggestion at this time.";
   }
 };
+
+// --- GOAL BREAKDOWN SERVICE ---
+export const breakDownGoal = async (goalTitle: string): Promise<string> => {
+    const prompt = `A user has set the following academic goal: "${goalTitle}".
+Break this high-level goal down into a short list of 3-5 small, actionable sub-tasks.
+Return ONLY a JSON array of strings.
+Example for "Learn React": ["Understand JSX syntax", "Learn about components and props", "Practice state management with useState", "Build a simple to-do app"]`;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+            }
+        }
+    });
+    
+    return response.text;
+};
