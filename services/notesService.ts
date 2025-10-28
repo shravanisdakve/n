@@ -1,5 +1,5 @@
 import { type Note, type Flashcard } from '../types';
-import { extractTextFromFile } from './geminiService';
+import { extractTextFromFile, summarizeAudioFromBase64 } from './geminiService';
 
 // Helper function to convert File to Base64
 const fileToBase64 = (file: File): Promise<string> => {
@@ -82,14 +82,24 @@ export const uploadNoteFile = async (courseId: string, title: string, file: File
     let extractedContent = "[Text extraction pending or failed]"; // Default content
 
     try {
-        // 1. Convert file to base64
-        const base64Data = await fileToBase64(file);
-        // 2. Extract text using Gemini
+      const base64Data = await fileToBase64(file);
+      
+      // Check if it's an audio file
+      if (file.type.startsWith('audio/')) {
+        console.log(`Summarizing audio file ${file.name}...`);
+        extractedContent = await summarizeAudioFromBase64(base64Data, file.type);
+        console.log(`Extracted ${extractedContent.length} characters from audio: ${file.name}`);
+      
+      // Otherwise, treat as document (PDF, PPTX, TXT)
+      } else {
+        console.log(`Extracting text from document ${file.name}...`);
         extractedContent = await extractTextFromFile(base64Data, file.type);
-        console.log(`Extracted ${extractedContent.length} characters from ${file.name}`);
+        console.log(`Extracted ${extractedContent.length} characters from document: ${file.name}`);
+      }
+
     } catch (error) {
-        console.error(`Failed to extract text from ${file.name}:`, error);
-        // Keep the default content message if extraction fails
+      console.error(`Failed to extract text from ${file.name}:`, error);
+      // Keep the default content message if extraction fails
     }
 
     const newNote: Note = {

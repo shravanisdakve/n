@@ -385,49 +385,53 @@ const NotesView: React.FC <{
             const isGeneratingThis = isSingleGenerating === note.id;
             const hasContent = note.content && note.content !== "[Text extraction pending or failed]";
             return (
-                <button
-                key={note.id}
-                onClick={() => onSelectNote(note)}
-                className={`w-full text-left p-4 border-b border-slate-700 transition-colors group flex justify-between items-start ${activeNote?.id === note.id ? 'bg-slate-700' : 'hover:bg-slate-700/50'}`}
-                >
-                <div className="flex items-center gap-2 overflow-hidden">
-                    {note.type === 'text' || !note.fileUrl ? <FileText size={14} className="mr-2 flex-shrink-0 text-slate-400" /> : <Upload size={14} className="mr-2 flex-shrink-0 text-sky-400" />}
-                    <h4 className="font-semibold text-slate-100 truncate">
-                        {note.title}
-                    </h4>
-                </div>
-                 {/* Action Buttons (Generate Flashcard, Delete) */}
-                 <div className="flex-shrink-0 flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                   {hasContent && ( // Only show generate button if there's content
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="p-1 h-auto hover:bg-violet-500/30"
-                        title="Generate Flashcards from this note"
-                        onClick={(e) => {
-                            e.stopPropagation(); // Stop note from being selected
-                            onGenerateSingleNoteFlashcards(note);
-                        }}
-                        disabled={isGeneratingThis || !!isSingleGenerating} // Disable if this or any other is generating
-                      >
-                         {isGeneratingThis ? <Spinner size="sm"/> : <Layers size={14} className="text-violet-400"/>}
-                      </Button>
-                   )}
-                   <Button
-                      variant="ghost"
-                      size="sm"
-                      className="p-1 h-auto hover:bg-red-500/30"
-                      title="Delete Note"
-                      onClick={(e) => {
-                           e.stopPropagation(); // Stop note from being selected
-                           onDeleteNote(note);
-                      }}
-                      disabled={isGeneratingThis || !!isSingleGenerating} // Disable while generating
-                    >
-                      <Trash2 size={14} className="text-red-400"/>
-                   </Button>
-                </div>
-                </button>
+                <div // Changed from <button> to <div>
+    key={note.id}
+    onClick={() => onSelectNote(note)}
+    className={`w-full text-left p-4 border-b border-slate-700 transition-colors group flex justify-between items-start cursor-pointer ${activeNote?.id === note.id ? 'bg-slate-700' : 'hover:bg-slate-700/50'}`}
+    role="button" // Added accessibility role
+    tabIndex={0} // Make it focusable
+    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelectNote(note)} // Allow keyboard activation
+>
+    {/* Note content remains the same */}
+    <div className="flex items-center gap-2 overflow-hidden">
+        {note.type === 'text' || !note.fileUrl ? <FileText size={14} className="mr-2 flex-shrink-0 text-slate-400" /> : <Upload size={14} className="mr-2 flex-shrink-0 text-sky-400" />}
+        <h4 className="font-semibold text-slate-100 truncate">
+            {note.title}
+        </h4>
+    </div>
+    {/* Action Buttons remain inside the div */}
+    <div className="flex-shrink-0 flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {hasContent && (
+            <Button
+                variant="ghost"
+                size="sm"
+                className="p-1 h-auto hover:bg-violet-500/30"
+                title="Generate Flashcards from this note"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onGenerateSingleNoteFlashcards(note);
+                }}
+                disabled={isGeneratingThis || !!isSingleGenerating}
+            >
+                {isGeneratingThis ? <Spinner size="sm"/> : <Layers size={14} className="text-violet-400"/>}
+            </Button>
+        )}
+        <Button // The inner button (_c2) is now valid as it's inside a div
+            variant="ghost"
+            size="sm"
+            className="p-1 h-auto hover:bg-red-500/30"
+            title="Delete Note"
+            onClick={(e) => {
+                e.stopPropagation();
+                onDeleteNote(note);
+            }}
+            disabled={isGeneratingThis || !!isSingleGenerating}
+        >
+            <Trash2 size={14} className="text-red-400"/>
+        </Button>
+    </div>
+</div>
             )
           })}
         </div>
@@ -628,14 +632,14 @@ const AddNoteModal: React.FC<{isOpen: boolean, onClose: () => void, courseId: st
                   <Upload size={24} className="text-slate-400 mb-2" />
                   <p className="mb-2 text-sm text-slate-400 text-center px-2">
                     {file ? file.name : <><span className="font-semibold">Click to upload</span> or drag and drop</>}</p>
-                  <p className="text-xs text-slate-500">PDF, TXT, MD, PPTX</p>
+                  <p className="text-xs text-slate-500">PDF, TXT, MD, PPTX, Audio</p>
                 </div>
                 <input
                   id="modal-file-upload"
                   type="file"
                   className="hidden"
                   onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
-                  accept=".txt,.md,.pdf,.pptx"
+                  accept=".txt,.md,.pdf,.pptx,.mp3,.wav,.ogg,.aac"
                   required // Make file input required
                 />
               </label>
