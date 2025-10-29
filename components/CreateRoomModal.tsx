@@ -21,7 +21,7 @@ type ModalStep = 'selectMode' | 'selectTechnique' | 'configureRoom';
 type RoomMode = 'Group' | 'College';
 
 const techniques = [
-    { name: 'Active Recall', description: 'Test your memory to strengthen it.', icon: Brain },
+    { name: 'Pomodoro Technique', description: 'Use a timer to break down work into focused intervals.', icon: Timer },
     { name: 'Feynman Technique', description: 'Explain it simply to find your knowledge gaps.', icon: MessageSquare },
     { name: 'Spaced Repetition', description: 'Review at increasing intervals for long-term retention.', icon: Timer }
 ];

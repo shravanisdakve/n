@@ -92,7 +92,6 @@ export const getProductivityReport = async (courseId: string | null = null) => {
 
     const strengths = topicPerformance.filter(t => t.accuracy >= 80 && t.count > 1).sort((a, b) => b.accuracy - a.accuracy).slice(0, 3);
     const weaknesses = topicPerformance.filter(t => t.accuracy < 60 && t.count > 1).sort((a, b) => a.accuracy - b.accuracy).slice(0, 3);
-    // --- END FIX ---
 
     return {
         totalStudyTime,
