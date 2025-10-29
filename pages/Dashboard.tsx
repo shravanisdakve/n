@@ -267,6 +267,7 @@ const StudyHub: React.FC = () => {
 
   const handleMoodSelected = async (mood: MoodType['mood']) => { // Modified to accept mood
       setShowMoodCheckin(false);
+      sessionStorage.setItem('moodCheckedIn', 'true'); // Mark as checked in for this session
       setIsLoadingSuggestion(true);
       setAiSuggestion(null); // Clear old suggestion
       

@@ -13,7 +13,7 @@ const tracks = [
   },
   { 
     name: 'Lofi (Web)', 
-    url: 'https://archive.org/download/ShelterLofi/ShelterLofi.mp3' // Kept one web link as a backup
+    url: '/music3.mp3' // Kept one web link as a backup
   },
 ];
 // --- END FIX ---
