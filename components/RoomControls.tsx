@@ -19,6 +19,8 @@ interface RoomControlsProps {
   onShare: () => void;
   roomId: string;
   formattedSessionTime: string;
+  showMusicPlayer: boolean; // NEW: Prop to control MusicPlayer visibility
+  children?: React.ReactNode; // NEW: To render the MusicPlayer as a child
   // --- FIX: Added onAddTestUser prop ---
   onAddTestUser: () => void;
   // --- END FIX ---
@@ -40,7 +42,9 @@ const RoomControls: React.FC<RoomControlsProps> = ({
   onShare,
   roomId,
   formattedSessionTime,
-  onAddTestUser // Destructure the new prop
+  onAddTestUser, // Destructure the new prop
+  showMusicPlayer, // Destructure new prop
+  children // Destructure new prop
 }) => {
   const [showReactions, setShowReactions] = React.useState(false);
 
@@ -124,15 +128,17 @@ const RoomControls: React.FC<RoomControlsProps> = ({
             )}
         </div>
 
-
         {/* Music Player Toggle */}
-        <Button
-          onClick={onToggleMusic}
-          className="p-3 rounded-full bg-slate-700 hover:bg-slate-600"
-          aria-label="Toggle Music Player"
-        >
-          <Music size={20} />
-        </Button>
+        <div className="relative">
+            <Button
+            onClick={onToggleMusic}
+            className="p-3 rounded-full bg-slate-700 hover:bg-slate-600"
+            aria-label="Toggle Music Player"
+            >
+            <Music size={20} />
+            </Button>
+            {showMusicPlayer && children} {/* Render children (MusicPlayer) here */}
+        </div>
 
         {/* Share Room Button */}
         <Button

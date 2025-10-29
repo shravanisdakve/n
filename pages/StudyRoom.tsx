@@ -595,7 +595,6 @@ const StudyRoom: React.FC = () => {
     return (
         <div className="h-full flex flex-col bg-slate-900 text-slate-200 p-0 m-[-2rem] relative">
             <Reactions reactions={reactions} />
-            {showMusicPlayer && <MusicPlayer onClose={() => setShowMusicPlayer(false)} />}
             {showShareModal && <ShareModal roomId={roomId || ''} onClose={() => setShowShareModal(false)} />}
 
             {sharedQuiz && (
@@ -699,7 +698,6 @@ const StudyRoom: React.FC = () => {
 
              <input type="file" ref={notesFileInputRef} onChange={handleNotesFileUpload} accept=".txt,.md,.pdf,.pptx" style={{ display: 'none' }} />
 
-            {/* --- FIX: Pass formatted time to RoomControls --- */}
              <RoomControls
                 mediaReady={!!localStream}
                 isMuted={isMuted}
@@ -715,7 +713,10 @@ const StudyRoom: React.FC = () => {
                 roomId={roomId || ''}
                 formattedSessionTime={formatElapsedTime(elapsedTime)} // Pass formatted time
                 onAddTestUser={handleAddTestUser}
-            />
+                showMusicPlayer={showMusicPlayer} // Pass showMusicPlayer state
+            >
+                {showMusicPlayer && <MusicPlayer onClose={() => setShowMusicPlayer(false)} />} {/* Render MusicPlayer as child */}
+            </RoomControls>
             {/* --- END FIX --- */}
         </div>
     );

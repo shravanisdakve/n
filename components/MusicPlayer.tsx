@@ -4,16 +4,16 @@ import { X, Play, Pause, Volume2, VolumeX, Music } from 'lucide-react';
 // --- FIX: Replaced web links with your local files from the /public folder ---
 const tracks = [
   { 
-    name: 'My Music 1', 
+    name: 'Music 1', 
     url: '/music1.mp3' // This path works because music1.mp3 is in /public
   },
   { 
-    name: 'My Music 2', 
+    name: 'Music 2', 
     url: '/music2.mp3' // This path works because music2.mp3 is in /public
   },
   { 
-    name: 'Lofi (Web)', 
-    url: '/music3.mp3' // Kept one web link as a backup
+    name: 'Lofi music', 
+    url: '/music3.mp3' // This path works because music3.mp3 is in /public
   },
 ];
 // --- END FIX ---
