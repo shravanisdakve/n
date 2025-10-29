@@ -185,7 +185,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) =>
             />
 
             <Button onClick={handleTechniqueSelect} disabled={!topic.trim()} className="w-full">
-                Next: Configure Room
+                Configure Room
             </Button>
         </div>
     );
