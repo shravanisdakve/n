@@ -167,7 +167,8 @@ const AiTutor: React.FC = () => {
         speechSynthesis.cancel();
         
         const newUserMessage: ChatMessage = { role: 'user', parts: [{ text: currentMessage }] };
-        setMessages(prev => [...prev, newUserMessage]);
+        const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] }; // Placeholder for model response
+        setMessages(prev => [...prev, newUserMessage, newModelMessage]);
         setInput('');
         setIsLoading(true);
         setError(null);
@@ -177,26 +178,19 @@ const AiTutor: React.FC = () => {
             const stream = await streamChat(currentMessage);
             
             let modelResponse = '';
-            let streamedMessageStarted = false;
-
             for await (const chunk of stream) {
                 modelResponse += chunk.text;
-                
-                if (!streamedMessageStarted) {
-                    streamedMessageStarted = true;
-                    setIsLoading(false); // Hide loading indicator once streaming starts
-                    setMessages(prev => [...prev, { role: 'model', parts: [{ text: modelResponse }] }]);
-                } else {
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        const lastMessage = newMessages[newMessages.length - 1];
-                        if (lastMessage && lastMessage.role === 'model') {
-                            lastMessage.parts = [{ text: modelResponse }];
-                        }
-                        return newMessages;
-                    });
-                }
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastMessage = newMessages[newMessages.length - 1];
+                    if (lastMessage && lastMessage.role === 'model') {
+                        lastMessage.parts = [{ text: modelResponse }];
+                    }
+                    return newMessages;
+                });
             }
+            
+            setIsLoading(false); // Hide loading indicator once streaming is complete
             
             if (modelResponse && (isAutoSpeaking || isVoiceInput)) {
                 handleSpeak(modelResponse);
